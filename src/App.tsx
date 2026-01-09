@@ -96,6 +96,13 @@ function TextPathDisplay({
         textLength={pathLength > 0 ? pathLength : undefined}
         lengthAdjust="spacing"
         dominantBaseline="middle"
+        style={{
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          MozUserSelect: 'none',
+          msUserSelect: 'none',
+          pointerEvents: 'none'
+        }}
       >
         <textPath href={`#${pathId}`} startOffset="0%" dy="-16">
           {displayText}
@@ -107,7 +114,7 @@ function TextPathDisplay({
 
 function App() {
   // サンプルデータ：1文字ごとに座標を指定（4文字なので4つの座標）
-  const sampleTextPath: TextPathObject = {
+  const initialTextPath: TextPathObject = {
     textEng: 'Hida Mountains',
     text: '飛騨山脈',
     charCoords: [
@@ -118,9 +125,17 @@ function App() {
     ]
   };
 
+  const [charCoords, setCharCoords] = useState(initialTextPath.charCoords);
+  const sampleTextPath: TextPathObject = {
+    ...initialTextPath,
+    charCoords
+  };
+
   type TextMode = 'japanese' | 'english' | 'custom';
   const [textMode, setTextMode] = useState<TextMode>('japanese');
   const [customText, setCustomText] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   const displayText = (() => {
     switch (textMode) {
@@ -132,6 +147,57 @@ function App() {
         return sampleTextPath.text;
     }
   })();
+
+  // SVG座標系でのマウス位置を取得
+  const getSVGPoint = (event: React.MouseEvent<SVGSVGElement>, svg: SVGSVGElement): { x: number; y: number } => {
+    const rect = svg.getBoundingClientRect();
+    const viewBox = svg.viewBox.baseVal;
+    const scaleX = viewBox.width / rect.width;
+    const scaleY = viewBox.height / rect.height;
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY
+    };
+  };
+
+  const handleMouseDown = (index: number, event: React.MouseEvent<SVGCircleElement>) => {
+    if (!isEditMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDraggingIndex(index);
+  };
+
+  // 編集モード中にテキスト選択を防ぐ
+  useLayoutEffect(() => {
+    if (!isEditMode) return;
+
+    const preventSelect = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('selectstart', preventSelect);
+    document.addEventListener('dragstart', preventSelect);
+
+    return () => {
+      document.removeEventListener('selectstart', preventSelect);
+      document.removeEventListener('dragstart', preventSelect);
+    };
+  }, [isEditMode]);
+
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (draggingIndex === null || !isEditMode) return;
+    const svg = event.currentTarget;
+    const point = getSVGPoint(event, svg);
+    setCharCoords(prev => {
+      const newCoords = [...prev];
+      newCoords[draggingIndex] = { x: point.x, y: point.y };
+      return newCoords;
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDraggingIndex(null);
+  };
 
   return (
     <>
@@ -196,10 +262,61 @@ function App() {
             }}
           />
         )}
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          style={{
+            marginLeft: '10px',
+            padding: '8px 16px',
+            backgroundColor: isEditMode ? '#FF9800' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {isEditMode ? '編集終了' : 'ポイント編集'}
+        </button>
       </div>
-      <svg width="400" height="300" viewBox="0 0 400 300">
+      <svg
+        width="400"
+        height="300"
+        viewBox="0 0 400 300"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{
+          cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'grab' : 'default',
+          userSelect: isEditMode ? 'none' : 'auto',
+          WebkitUserSelect: isEditMode ? 'none' : 'auto',
+          MozUserSelect: isEditMode ? 'none' : 'auto',
+          ...(isEditMode && { msUserSelect: 'none' as const })
+        } as React.CSSProperties}
+      >
         <rect width="400" height="300" fill="#F5F5DC" />
         <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} />
+        {isEditMode && charCoords.map((coord, index) => (
+          <g key={index}>
+            {/* ドラッグ判定用の透明な大きな円 */}
+            <circle
+              cx={coord.x}
+              cy={coord.y}
+              r="15"
+              fill="transparent"
+              style={{ cursor: draggingIndex === index ? 'grabbing' : 'grab' }}
+              onMouseDown={(e) => handleMouseDown(index, e)}
+            />
+            {/* 見た目用の小さな円 */}
+            <circle
+              cx={coord.x}
+              cy={coord.y}
+              r="6"
+              fill="#2196F3"
+              stroke="white"
+              strokeWidth="2"
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
+        ))}
       </svg>
     </>
   )
