@@ -199,6 +199,25 @@ function App() {
     setDraggingIndex(null);
   };
 
+  // ポイント削除
+  const handleDeletePoint = (index: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (charCoords.length > 2) {
+      setCharCoords(charCoords.filter((_, i) => i !== index));
+    }
+  };
+
+  // SVG内のクリック位置にポイントを追加
+  const handleSVGClick = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (!isEditMode || draggingIndex !== null) return;
+    // ポイント上をクリックした場合は追加しない
+    if ((event.target as SVGElement).tagName === 'circle') return;
+
+    const svg = event.currentTarget;
+    const point = getSVGPoint(event, svg);
+    setCharCoords([...charCoords, point]);
+  };
+
   return (
     <>
       <div style={{ marginBottom: '10px' }}>
@@ -284,8 +303,9 @@ function App() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={handleSVGClick}
         style={{
-          cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'grab' : 'default',
+          cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'crosshair' : 'default',
           userSelect: isEditMode ? 'none' : 'auto',
           WebkitUserSelect: isEditMode ? 'none' : 'auto',
           MozUserSelect: isEditMode ? 'none' : 'auto',
@@ -315,6 +335,33 @@ function App() {
               strokeWidth="2"
               style={{ pointerEvents: 'none' }}
             />
+            {/* 削除ボタン（最小2点の場合は表示しない） */}
+            {charCoords.length > 2 && (
+              <g
+                transform={`translate(${coord.x + 12}, ${coord.y - 12})`}
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => handleDeletePoint(index, e)}
+              >
+                <circle
+                  r="8"
+                  fill="#f44336"
+                  stroke="white"
+                  strokeWidth="1.5"
+                />
+                <text
+                  x="0"
+                  y="0"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="10"
+                  fill="white"
+                  fontWeight="bold"
+                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                >
+                  ×
+                </text>
+              </g>
+            )}
           </g>
         ))}
       </svg>
