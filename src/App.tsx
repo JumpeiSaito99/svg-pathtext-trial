@@ -46,26 +46,56 @@ function coordsToSmoothPath(coords: Array<{ x: number; y: number }>): string {
   return path;
 }
 
+// パス上の位置と角度を計算する関数
+function getPathPointAtLength(path: SVGPathElement, length: number): { x: number; y: number; angle: number } {
+  const point = path.getPointAtLength(length);
+  const nextPoint = path.getPointAtLength(Math.min(length + 1, path.getTotalLength()));
+  const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * (180 / Math.PI);
+  return { x: point.x, y: point.y, angle };
+}
+
 // TextPathObjectを受け取って表示するコンポーネント
 function TextPathDisplay({
   textPathObject,
-  displayText
+  displayText,
+  followPath
 }: {
   textPathObject: TextPathObject;
   displayText: string;
+  followPath: boolean;
 }) {
   const pathId = useId();
-  const pathRef = useRef<SVGPathElement>(null);
-  const [pathLength, setPathLength] = useState<number>(0);
+  const internalPathRef = useRef<SVGPathElement>(null);
+  const [charPositions, setCharPositions] = useState<Array<{ x: number; y: number; angle: number }>>([]);
 
   const pathData = coordsToSmoothPath(textPathObject.charCoords);
 
   useLayoutEffect(() => {
-    if (pathRef.current) {
-      const length = pathRef.current.getTotalLength();
-      setPathLength(length);
+    const path = internalPathRef.current;
+    if (!path) return;
+    const length = path.getTotalLength();
+
+    // 各文字の位置と角度を計算
+    const chars = displayText.split('');
+    const positions: Array<{ x: number; y: number; angle: number }> = [];
+
+    if (chars.length > 0 && length > 0) {
+      const charWidth = length / chars.length;
+      for (let i = 0; i < chars.length; i++) {
+        const charLength = (i + 0.5) * charWidth;
+        const pathPoint = getPathPointAtLength(path, charLength);
+        // followPathがtrueの場合はパスの角度、falseの場合は0（回転なし）
+        const rotation = followPath ? pathPoint.angle : 0;
+        positions.push({
+          x: pathPoint.x,
+          y: pathPoint.y,
+          angle: rotation
+        });
+      }
     }
-  }, [pathData, displayText]);
+
+    setCharPositions(positions);
+  }, [pathData, displayText, followPath]);
 
   return (
     <>
@@ -74,7 +104,7 @@ function TextPathDisplay({
       </defs>
       {/* パスの長さを取得するための非表示パス */}
       <path
-        ref={pathRef}
+        ref={internalPathRef}
         d={pathData}
         fill="none"
         stroke="none"
@@ -89,25 +119,33 @@ function TextPathDisplay({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <text
-        fontSize="24"
-        fill="red"
-        fontFamily="sans-serif"
-        textLength={pathLength > 0 ? pathLength : undefined}
-        lengthAdjust="spacing"
-        dominantBaseline="middle"
-        style={{
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-          MozUserSelect: 'none',
-          msUserSelect: 'none',
-          pointerEvents: 'none'
-        }}
-      >
-        <textPath href={`#${pathId}`} startOffset="0%" dy="-16">
-          {displayText}
-        </textPath>
-      </text>
+      {/* 各文字を個別に表示 */}
+      {displayText.split('').map((char, index) => {
+        const pos = charPositions[index];
+        if (!pos) return null;
+        return (
+          <text
+            key={index}
+            x={pos.x}
+            y={pos.y}
+            fontSize="24"
+            fill="red"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            transform={`rotate(${pos.angle}, ${pos.x}, ${pos.y})`}
+            style={{
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
+              pointerEvents: 'none'
+            }}
+          >
+            {char}
+          </text>
+        );
+      })}
     </>
   );
 }
@@ -126,6 +164,7 @@ function App() {
   };
 
   const [charCoords, setCharCoords] = useState(initialTextPath.charCoords);
+  const [followPath, setFollowPath] = useState(true); // パスに沿った表示かどうか
   const sampleTextPath: TextPathObject = {
     ...initialTextPath,
     charCoords
@@ -185,7 +224,8 @@ function App() {
   }, [isEditMode]);
 
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
-    if (draggingIndex === null || !isEditMode) return;
+    if (!isEditMode || draggingIndex === null) return;
+
     const svg = event.currentTarget;
     const point = getSVGPoint(event, svg);
     setCharCoords(prev => {
@@ -295,6 +335,20 @@ function App() {
         >
           {isEditMode ? '編集終了' : 'ポイント編集'}
         </button>
+        <button
+          onClick={() => setFollowPath(!followPath)}
+          style={{
+            marginLeft: '10px',
+            padding: '8px 16px',
+            backgroundColor: followPath ? '#2196F3' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {followPath ? 'パス沿い' : '回転なし'}
+        </button>
       </div>
       <svg
         width="400"
@@ -313,7 +367,7 @@ function App() {
         } as React.CSSProperties}
       >
         <rect width="400" height="300" fill="#F5F5DC" />
-        <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} />
+        <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
         {isEditMode && charCoords.map((coord, index) => (
           <g key={index}>
             {/* ドラッグ判定用の透明な大きな円 */}
