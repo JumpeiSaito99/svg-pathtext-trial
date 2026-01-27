@@ -114,7 +114,7 @@ function TextPathDisplay({
       <path
         d={pathData}
         fill="none"
-        stroke="rgba(255, 255, 255, 0.8)"
+        stroke="rgba(255, 255, 255, 0.4)"
         strokeWidth="32"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -156,10 +156,10 @@ function App() {
     textEng: 'Hida Mountains',
     text: '飛騨山脈',
     charCoords: [
-      { x: 50, y: 200 },   // 「飛」の座標
-      { x: 150, y: 150 },  // 「騨」の座標
-      { x: 250, y: 135 },   // 「山」の座標
-      { x: 350, y: 150 }    // 「脈」の座標
+      { x: 100, y: 400 },   // 「飛」の座標
+      { x: 300, y: 300 },  // 「騨」の座標
+      { x: 500, y: 270 },   // 「山」の座標
+      { x: 700, y: 300 }    // 「脈」の座標
     ]
   };
 
@@ -351,9 +351,9 @@ function App() {
         </button>
       </div>
       <svg
-        width="400"
-        height="300"
-        viewBox="0 0 400 300"
+        width="800"
+        height="600"
+        viewBox="0 0 800 600"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -366,7 +366,10 @@ function App() {
           ...(isEditMode && { msUserSelect: 'none' as const })
         } as React.CSSProperties}
       >
-        <rect width="400" height="300" fill="#F5F5DC" />
+        {/* 背景画像を重ねて表示 */}
+        <image href="/01_terrain.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+        <image href="/02_lake.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+        <image href="/03_land_rf.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
         <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
         {isEditMode && charCoords.map((coord, index) => (
           <g key={index}>
