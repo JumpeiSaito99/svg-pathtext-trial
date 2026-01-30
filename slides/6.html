@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-
-<html lang="ja">
+<html lang="ja" data-theme="light" style="">
 
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
-    rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <script src="script.js"></script>
   <style>
     html, body {
@@ -33,8 +32,10 @@
       display: flex;
       flex-direction: column;
       background-color: #fff;
+      position: relative;
       transform-origin: center center;
-      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      transform: scale(min(calc(100vw / 3840), calc(100vh / 2160)));
+      page-break-after: always;
     }
 
     /* Header */
@@ -48,295 +49,365 @@
       z-index: 10;
     }
 
-    /* Main Content */
+    /* Content Area */
     .content-area {
       flex: 1;
+      display: flex;
       padding: 40px 60px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      position: relative;
+      gap: 40px;
       background-color: #f8fafc;
+      position: relative;
+      overflow-y: auto;
     }
 
-    /* Background Decoration */
-    .bg-grid {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-image:
-        linear-gradient(#e2e8f0 1px, transparent 1px),
-        linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
-      background-size: 40px 40px;
-      opacity: 0.3;
-      z-index: 0;
-    }
-
-    /* Process Flow Container */
-    .process-container {
-      display: flex;
-      align-items: stretch;
-      justify-content: space-between;
-      gap: 16px;
-      z-index: 10;
-      margin-top: 20px;
-    }
-
-    /* Step Card */
-    .step-card {
+    /* Left Column: Guidelines */
+    .guidelines-container {
       flex: 1;
-      background: white;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      padding: 24px 16px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      text-align: center;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      position: relative;
-      transition: transform 0.2s ease;
+      gap: 20px;
     }
 
-    .step-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-      border-color: #93c5fd;
-      /* blue-300 */
-    }
-
-    .step-number {
-      position: absolute;
-      top: -16px;
-      background-color: #3b82f6;
-      color: white;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      font-size: 14px;
-      border: 4px solid #f8fafc;
-    }
-
-    .step-icon {
-      width: 56px;
-      height: 56px;
-      background-color: #eff6ff;
-      /* blue-50 */
-      color: #2563eb;
-      /* blue-600 */
+    .guideline-section {
+      background-color: white;
       border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      margin-bottom: 16px;
-      margin-top: 8px;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
     }
 
-    .step-title {
+    .guideline-section h3 {
+      font-size: 16px;
       font-weight: 700;
       color: #1e293b;
-      margin-bottom: 8px;
-      font-size: 15px;
-      height: 44px;
-      /* Fixed height for 2 lines */
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .guideline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .guideline-item:last-child {
+      border-bottom: none;
+    }
+
+    .guideline-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
     }
 
-    .step-desc {
+    .icon-grouping {
+      background-color: #eff6ff;
+      color: #2563eb;
+    }
+
+    .icon-coordinate {
+      background-color: #f0fdf4;
+      color: #16a34a;
+    }
+
+    .icon-structure {
+      background-color: #fef3c7;
+      color: #d97706;
+    }
+
+    .guideline-content {
+      flex: 1;
+    }
+
+    .guideline-content h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    .guideline-content p {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* Left Column: Guidelines */
+    .guidelines-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .guideline-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .guideline-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .guideline-card h3 .number {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background-color: #3b82f6;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .guideline-card h3 .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .icon-grouping {
+      background-color: #eff6ff;
+      color: #2563eb;
+    }
+
+    .icon-coordinate {
+      background-color: #f0fdf4;
+      color: #16a34a;
+    }
+
+    .guideline-content {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.8;
+    }
+
+    .guideline-content strong {
+      color: #334155;
+      font-weight: 600;
+    }
+
+    /* Right Column: Visual Examples */
+    .examples-container {
+      width: 48%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .example-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .example-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .example-visual {
+      background-color: #f8fafc;
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px dashed #cbd5e1;
+      margin-bottom: 16px;
+      min-height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .example-bad {
+      border-color: #fecdd3;
+      background-color: #fef2f2;
+    }
+
+    .example-good {
+      border-color: #bbf7d0;
+      background-color: #f0fdf4;
+    }
+
+    .badge-bad {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: #fee2e2;
+      color: #dc2626;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .badge-good {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: #dcfce7;
+      color: #16a34a;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .example-text {
       font-size: 12px;
       color: #64748b;
       line-height: 1.5;
     }
 
-    /* Connectors */
-    .connector {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #cbd5e1;
-      font-size: 18px;
-    }
-
-    /* Visualization Section at Bottom */
-    .visual-preview {
-      margin-top: 40px;
-      background: white;
-      border-radius: 16px;
-      border: 1px solid #e2e8f0;
-      padding: 20px 30px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 10;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-    }
-
-    .preview-item {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .preview-label {
-      font-size: 12px;
-      font-weight: bold;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
-    }
-
-    .coordinate-tag {
-      font-family: monospace;
-      font-size: 11px;
-      background: #f1f5f9;
-      padding: 2px 6px;
+    /* Visual Elements */
+    .char-box {
+      display: inline-block;
+      padding: 4px 8px;
+      background-color: white;
+      border: 2px solid #3b82f6;
       border-radius: 4px;
-      color: #475569;
+      font-weight: bold;
+      color: #1e40af;
+      margin: 2px;
+    }
+
+    .char-box-grouped {
+      border-color: #16a34a;
+      background-color: #f0fdf4;
+      color: #15803d;
+    }
+
+    .char-box-separate {
+      border-color: #dc2626;
+      background-color: #fef2f2;
+      color: #991b1b;
     }
   </style>
 </head>
 
-<body>
+<body style="">
   <div class="slide-container">
     <!-- Header -->
     <div class="header">
       <div class="flex items-center gap-3">
-        <span class="bg-blue-100 text-blue-700 p-2 rounded-lg text-sm font-bold">
-          Tech Issue #02
+        <span class="bg-amber-100 text-amber-700 p-2 rounded-lg text-sm font-bold">
+          <i class="fa-solid fa-clipboard-check text-xl"></i>
         </span>
-        <h1 class="text-3xl font-black text-slate-800">技術的実装課題：座標変換と表示方法</h1>
+        <h1 class="text-3xl font-black text-slate-800">地図の編集時の対応可否確認事項</h1>
       </div>
-      <div class="flex items-center gap-2 text-slate-400 text-sm">
-        <i class="fa-solid fa-map-location-dot"></i>
-        <span>Coordinate Transformation &amp; Rendering</span>
+      <div class="flex items-center gap-2 text-slate-500 text-sm font-medium">
+        <span>Best Practices for Map Editing</span>
       </div>
     </div>
     <!-- Main Content -->
+    <div style="padding: 30px 60px 0;">
+      <h2 class="text-lg font-bold text-slate-700 mb-4">編集時の対応で、後述のスクリプトによる精度が向上することがあります。</h2>
+    </div>
     <div class="content-area">
-      <div class="bg-grid"></div>
-      <!-- Flow Steps -->
-      <div class="process-container">
-        <!-- Step 1 -->
-        <div class="step-card">
-          <div class="step-number">1</div>
-          <div class="step-icon">
-            <i class="fa-solid fa-crop-simple"></i>
-          </div>
-          <h3 class="step-title">起点検出<br />Origin Detection</h3>
-          <p class="step-desc">
-            上下左右の余白を除去 描画領域の原点座標を特定する。
-          </p>
-        </div>
-        <div class="connector">
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-        <!-- Step 2 -->
-        <div class="step-card">
-          <div class="step-number">2</div>
-          <div class="step-icon">
-            <i class="fa-solid fa-calculator"></i>
-          </div>
-          <h3 class="step-title">比率計算<br />Scale Calculation</h3>
-          <p class="step-desc">
-            Illustratorの内部座標と、実際のWeb表示サイズとの拡大縮小比率を算出する。
-          </p>
-        </div>
-        <div class="connector">
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-        <!-- Step 3 -->
-        <div class="step-card">
-          <div class="step-number">3</div>
-          <div class="step-icon">
-            <i class="fa-solid fa-vector-square"></i>
-          </div>
-          <h3 class="step-title">座標正規化<br />Normalization</h3>
-          <p class="step-desc">
-            ページごとに異なる原点を統一座標系へ変換し、一貫した位置情報を生成する。
-          </p>
-        </div>
-        <div class="connector">
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-        <!-- Step 4 -->
-        <div class="step-card">
-          <div class="step-number">4</div>
-          <div class="step-icon">
-            <i class="fa-solid fa-layer-group"></i>
-          </div>
-          <h3 class="step-title">地図合成<br />Map Composition</h3>
-          <p class="step-desc">
-            文字情報を除外した「地図背景画像」と、透明な「SVGレイヤー」を重ね合わせる。
-          </p>
-        </div>
-        <div class="connector">
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-        <!-- Step 5 -->
-        <div class="step-card" style="border-color: #3b82f6; background-color: #eff6ff;">
-          <div class="step-number" style="background-color: #2563eb;">5</div>
-          <div class="step-icon" style="background-color: #dbeafe; color: #1d4ed8;">
-            <i class="fa-solid fa-pen-nib"></i>
-          </div>
-          <h3 class="step-title" style="color: #1e40af;">SVG描画<br />SVG Rendering</h3>
-          <p class="step-desc" style="color: #1e3a8a;">
-            自由曲線(path)に沿ったテキスト描画や、領域内での折り返し(reflow)を表示する。
-          </p>
-        </div>
-      </div>
-      <!-- Visual Preview / Example -->
-      <div class="visual-preview">
-        <div class="preview-item">
-          <div class="bg-slate-100 p-3 rounded-lg text-slate-400">
-            <i class="fa-solid fa-file-code text-2xl"></i>
-          </div>
-          <div>
-            <p class="preview-label">Input Data</p>
-            <p class="coordinate-tag">x: 145.2, y: 302.5, rot: 15deg</p>
-          </div>
-        </div>
-        <div class="text-slate-300">
-          <i class="fa-solid fa-arrow-right-long"></i>
-        </div>
-        <div class="preview-item justify-center">
-          <div class="text-center">
-            <p class="preview-label text-blue-500">Transform Matrix</p>
-            <p class="text-xs text-slate-500 font-mono">matrix(0.8, 0.2, -0.2, 0.8, 10, 20)</p>
-          </div>
-        </div>
-        <div class="text-slate-300">
-          <i class="fa-solid fa-arrow-right-long"></i>
-        </div>
-        <div class="preview-item justify-end">
-          <div class="text-right">
-            <p class="preview-label text-green-600">Final Output</p>
-            <div class="flex items-center gap-2 justify-end">
-              <span class="text-xs font-bold text-slate-700">SVG TextPath</span>
-              <div class="bg-green-100 p-2 rounded text-green-600">
-                <i class="fa-solid fa-bezier-curve"></i>
+      <!-- Left Column: Guidelines -->
+      <div class="guidelines-container">
+        <!-- Example 1: Grouping -->
+        <div class="example-card">
+          <h4>
+            <i class="fa-solid fa-object-group text-blue-500"></i>
+            文字オブジェクトのグループ化
+          </h4>
+          <div class="example-visual example-bad">
+            <div class="badge-bad">NG</div>
+            <div style="text-align: center; font-size: 11px; color: #64748b;">
+              <div style="margin-bottom: 8px;">個別のTextFrameオブジェクト</div>
+              <div>
+                <span class="char-box char-box-separate">東</span>
+                <span style="margin: 0 10px; color: #94a3b8;">+</span>
+                <span class="char-box char-box-separate">京</span>
               </div>
+              <div style="margin-top: 8px; color: #dc2626; font-weight: bold;">グループ化されていない</div>
             </div>
           </div>
+          <p class="example-text"><strong>問題:</strong> 文字オブジェクトが個別に配置されていると、自動グルーピングが困難です。</p>
+          <div class="example-visual example-good" style="margin-top: 12px;">
+            <div class="badge-good">OK</div>
+            <div style="text-align: center; font-size: 11px; color: #64748b;">
+              <div style="margin-bottom: 8px;">グループ化されたオブジェクト</div>
+              <div style="border: 2px solid #16a34a; border-radius: 6px; padding: 8px; display: inline-block; background-color: #f0fdf4;">
+                <span class="char-box char-box-grouped">東</span>
+                <span class="char-box char-box-grouped">京</span>
+              </div>
+              <div style="margin-top: 8px; color: #16a34a; font-weight: bold;">✓ グループ化済み</div>
+            </div>
+          </div>
+          <p class="example-text"><strong>推奨:</strong> Illustratorの「グループ」機能を用いて単語内の文字オブジェクトをグループ化することで、確実に単語として認識されます。</p>
         </div>
       </div>
-      <!-- Note -->
-      <div class="mt-4 flex items-center gap-2 text-xs text-slate-500 justify-end">
-        <i class="fa-solid fa-circle-check text-green-500"></i>
-        <p>原文の塗りつぶしではなく、文字レイヤーそのものを置換することで視認性を確保</p>
+
+      <!-- Right Column: Examples -->
+      <div class="examples-container">
+        <!-- Example 2: Coordinate -->
+        <div class="example-card">
+          <h4>
+            <i class="fa-solid fa-map-location-dot text-green-500"></i>
+            起点座標の統一
+          </h4>
+          <div class="example-visual example-bad">
+            <div class="badge-bad">NG</div>
+            <div style="font-size: 11px; color: #64748b; line-height: 1.8;">
+              <div style="margin-bottom: 8px;"><strong>ページごとに異なる起点</strong></div>
+              <div>📄 ページ1: 左上角 (10, 20)</div>
+              <div>📄 ページ2: 左上角 (5, 15)</div>
+              <div>📄 ページ3: 左上角 (0, 0)</div>
+              <div style="margin-top: 8px; color: #dc2626; font-weight: bold;">❌ 統一されていない</div>
+            </div>
+          </div>
+          <p class="example-text"><strong>問題:</strong> ページごとに起点座標が異なると、座標変換処理が複雑になり、誤差が発生します。</p>
+          <div class="example-visual example-good" style="margin-top: 16px;">
+            <div class="badge-good">OK</div>
+            <div style="font-size: 11px; color: #64748b; line-height: 1.8;">
+              <div style="margin-bottom: 8px;"><strong>全ページで統一された起点</strong></div>
+              <div>📄 ページ1: 左上角 (0, 0)</div>
+              <div>📄 ページ2: 左上角 (0, 0)</div>
+              <div>📄 ページ3: 左上角 (0, 0)</div>
+              <div style="margin-top: 8px; color: #16a34a; font-weight: bold;">✓ ルールに従って統一</div>
+            </div>
+          </div>
+          <p class="example-text"><strong>推奨:</strong> 紙面画像の起点となる座標にルールを設け、すべてのページで統一することで、座標変換が正確に行われます。</p>
+        </div>
       </div>
     </div>
   </div>
+
 </body>
 
 </html>

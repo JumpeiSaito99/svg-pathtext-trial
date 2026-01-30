@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style="">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="script.js"></script>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #999;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 3840), calc(100vh / 2160)));
+    }
+
+    /* Header */
+    .header {
+      padding: 30px 60px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: white;
+      z-index: 10;
+    }
+
+    /* Content Area */
+    .content-area {
+      flex: 1;
+      display: flex;
+      padding: 50px 80px;
+      background-color: #f8fafc;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Main Content */
+    .col-left {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+      z-index: 1;
+      margin: 0 auto;
+    }
+
+    /* Summary Card */
+    .summary-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      border-left: 6px solid #3b82f6;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Todo List */
+    .todo-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .todo-item {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid #e2e8f0;
+      transition: transform 0.2s;
+    }
+
+    .todo-item:hover {
+      transform: translateX(5px);
+      border-color: #cbd5e1;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .todo-check {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #cbd5e1;
+      border-radius: 6px;
+    }
+
+    .priority-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-left: auto;
+    }
+
+    .p-high {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+
+    .p-mid {
+      background-color: #ffedd5;
+      color: #ea580c;
+    }
+
+    .p-low {
+      background-color: #f1f5f9;
+      color: #64748b;
+    }
+
+    /* Right Column */
+    .col-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+      background-color: white;
+      border-radius: 24px;
+      padding: 30px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Roadmap Timeline */
+    .roadmap-container {
+      flex: 1;
+      position: relative;
+      margin-top: 10px;
+      padding-left: 20px;
+      padding-right: 10px;
+    }
+
+    .timeline-line {
+      position: absolute;
+      left: 29px;
+      top: 18px;
+      bottom: 30px;
+      width: 2px;
+      background-color: #e2e8f0;
+    }
+
+    .roadmap-item {
+      position: relative;
+      padding-left: 60px;
+      margin-bottom: 30px;
+    }
+
+    .roadmap-node {
+      position: absolute;
+      left: 14px;
+      top: 2px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: white;
+      border: 4px solid #3b82f6;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .node-future {
+      border-color: #cbd5e1;
+      background-color: #f8fafc;
+    }
+
+    .month-label {
+      position: absolute;
+      left: -10px;
+      top: 36px;
+      font-size: 10px;
+      font-weight: bold;
+      color: #94a3b8;
+      width: 80px;
+      text-align: center;
+    }
+
+    .roadmap-content {
+      background-color: #f8fafc;
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 1px solid #f1f5f9;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+
+    .roadmap-content:hover {
+      background-color: #f1f5f9;
+      border-color: #e2e8f0;
+    }
+
+    .roadmap-title {
+      font-weight: bold;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .roadmap-desc {
+      font-size: 12px;
+      color: #64748b;
+    }
+  </style>
+</head>
+
+<body style="">
+  <div class="slide-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="flex items-center gap-3">
+        <span class="bg-slate-800 text-white p-2 rounded-lg text-sm font-bold">
+          <i class="fa-solid fa-flag-checkered text-xl"></i>
+        </span>
+        <h1 class="text-3xl font-black text-slate-800">まとめ・次のステップ</h1>
+      </div>
+      <div class="flex items-center gap-2 text-slate-500 text-sm font-medium">
+        <span>Conclusion &amp; Next Steps</span>
+      </div>
+    </div>
+    <!-- Main Content -->
+    <div class="content-area">
+      <!-- Main Content: Summary & TODO -->
+      <div class="col-left">
+        <!-- Summary -->
+        <div class="summary-card">
+          <h2 class="text-xl font-bold text-slate-800 mb-3 flex items-center">
+            <i class="fa-solid fa-lightbulb text-yellow-500 mr-2"></i>
+            結論
+          </h2>
+          <p class="text-base text-slate-600 leading-relaxed mb-3">
+            地図帳特有の複雑さにより、従来のOCR方式では精度に限界があります。
+          </p>
+          <p class="text-base font-bold text-blue-700 leading-relaxed">
+            「Illustratorスクリプトによるデータ抽出」へ方針転換することで、精度100%のテキスト取得を実現します。
+          </p>
+        </div>
+        <!-- Action Plan -->
+        <div class="todo-container">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2">
+            <i class="fa-solid fa-list-check"></i> 直近のTODO
+          </h3>
+          <div class="todo-item">
+            <div class="todo-check"></div>
+            <div>
+              <p class="text-base font-bold text-slate-700">グルーピングPoC実装</p>
+              <p class="text-sm text-slate-500">文字結合アルゴリズムの検証</p>
+            </div>
+            <span class="priority-badge p-high">High</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-check"></div>
+            <div>
+              <p class="text-base font-bold text-slate-700">座標変換モジュール作成</p>
+              <p class="text-sm text-slate-500">Illustrator座標→Web座標</p>
+            </div>
+            <span class="priority-badge p-high">High</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-check"></div>
+            <div>
+              <p class="text-base font-bold text-slate-700">SVG表示プロトタイプ</p>
+              <p class="text-sm text-slate-500">サンプルデータを地図と重ねて表示テスト</p>
+            </div>
+            <span class="priority-badge p-mid">Medium</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-check"></div>
+            <div>
+              <p class="text-base font-bold text-slate-700">翻訳API統合 &amp; 評価</p>
+              <p class="text-sm text-slate-500">用語集適用とテスト</p>
+            </div>
+            <span class="priority-badge p-mid">Medium</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

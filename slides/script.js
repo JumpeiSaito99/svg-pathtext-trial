@@ -1,4 +1,4 @@
-const slideNum =9;
+const slideNum =10;
 
 document.addEventListener("click", () => {
   const currentSlide = window.location.pathname.match(/(\d+)\.html$/)[1];

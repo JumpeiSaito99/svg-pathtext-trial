@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="ja" data-theme="light" style="">
+
+<html lang="ja">
 
 <head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
-    rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
   <script src="script.js"></script>
   <style>
     html, body {
@@ -33,7 +34,8 @@
       flex-direction: column;
       background-color: #fff;
       transform-origin: center center;
-      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      transform: scale(min(calc(100vw / 3840), calc(100vh / 2160)));
+      page-break-after: always;
     }
 
     /* Header */
@@ -43,284 +45,299 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background-color: white;
+      z-index: 10;
     }
 
-    /* Content Layout */
+    /* Main Content */
     .content-area {
       flex: 1;
-      display: flex;
       padding: 40px 60px;
-      gap: 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
       background-color: #f8fafc;
     }
 
-    /* Left Column */
-    .checklist-container {
-      flex: 3;
+    /* Background Decoration */
+    .bg-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        linear-gradient(#e2e8f0 1px, transparent 1px),
+        linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      z-index: 0;
+    }
+
+    /* Process Flow Container */
+    .process-container {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 10;
+      margin-top: 20px;
+    }
+
+    /* Step Card */
+    .step-card {
+      flex: 1;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 24px 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-    }
-
-    .check-item {
-      background-color: white;
-      border-radius: 12px;
-      padding: 20px 24px;
-      display: flex;
-      align-items: flex-start;
-      gap: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-      border: 1px solid #e2e8f0;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .check-item:hover {
-      transform: translateX(5px);
+      align-items: center;
+      text-align: center;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      border-color: #cbd5e1;
+      position: relative;
+      transition: transform 0.2s ease;
     }
 
-    .check-icon-box {
-      width: 40px;
-      height: 40px;
+    .step-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      border-color: #93c5fd;
+      /* blue-300 */
+    }
+
+    .step-number {
+      position: absolute;
+      top: -16px;
+      background-color: #3b82f6;
+      color: white;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
+      font-weight: 900;
+      font-size: 14px;
+      border: 4px solid #f8fafc;
     }
 
-    .status-ready {
-      background-color: #dcfce7;
-      color: #15803d;
-    }
-
-    /* Green */
-    .status-plan {
+    .step-icon {
+      width: 56px;
+      height: 56px;
       background-color: #eff6ff;
+      /* blue-50 */
       color: #2563eb;
-    }
-
-    /* Blue */
-    .status-wip {
-      background-color: #fff7ed;
-      color: #c2410c;
-    }
-
-    /* Orange */
-
-    /* Right Column */
-    .sidebar-container {
-      flex: 2;
+      /* blue-600 */
+      border-radius: 12px;
       display: flex;
-      flex-direction: column;
-      gap: 24px;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+      margin-top: 8px;
     }
 
-    .ui-preview-card {
-      background-color: white;
+    .step-title {
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      font-size: 15px;
+      height: 44px;
+      /* Fixed height for 2 lines */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* Connectors */
+    .connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #cbd5e1;
+      font-size: 18px;
+    }
+
+    /* Visualization Section at Bottom */
+    .visual-preview {
+      margin-top: 40px;
+      background: white;
       border-radius: 16px;
       border: 1px solid #e2e8f0;
-      padding: 24px;
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .mock-ui-header {
+      padding: 20px 30px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #f1f5f9;
-      padding-bottom: 10px;
+      justify-content: space-between;
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
     }
 
-    .toggle-switch {
-      width: 48px;
-      height: 24px;
-      background-color: #2563eb;
-      border-radius: 12px;
-      position: relative;
+    .preview-item {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
-    .toggle-knob {
-      width: 20px;
-      height: 20px;
-      background-color: white;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px;
-      right: 2px;
-    }
-
-    .verification-box {
-      background-color: #f1f5f9;
-      border-radius: 12px;
-      padding: 20px;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+    .preview-label {
+      font-size: 12px;
       font-weight: bold;
-      margin-right: 6px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
     }
 
-    .tag-api {
-      background-color: #e0e7ff;
-      color: #4338ca;
-    }
-
-    .tag-dict {
-      background-color: #fce7f3;
-      color: #be185d;
+    .coordinate-tag {
+      font-family: monospace;
+      font-size: 11px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #475569;
     }
   </style>
 </head>
 
-<body style="">
+<body>
   <div class="slide-container">
     <!-- Header -->
-    <div class="header bg-white">
+    <div class="header">
       <div class="flex items-center gap-3">
-        <span class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-sm font-bold">
-          <i class="fa-solid fa-language text-xl"></i>
+        <span class="bg-blue-100 text-blue-700 p-2 rounded-lg text-sm font-bold">
+          Tech Issue #02
         </span>
-        <h1 class="text-3xl font-black text-slate-800">翻訳機能の実装</h1>
+        <h1 class="text-3xl font-black text-slate-800">技術的アプローチ：座標変換と表示方法</h1>
       </div>
-      <div class="flex items-center gap-2 text-slate-500 text-sm font-medium">
-        <span>Phase 3: Integration</span>
-        <i class="fa-solid fa-chevron-right text-xs"></i>
+      <div class="flex items-center gap-2 text-slate-400 text-sm">
+        <i class="fa-solid fa-map-location-dot"></i>
+        <span>Coordinate Transformation &amp; Rendering</span>
       </div>
     </div>
     <!-- Main Content -->
     <div class="content-area">
-      <!-- Left: Checklist -->
-      <div class="checklist-container">
-        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">Implementation Requirements
-        </h2>
-        <!-- Item 1: Prerequisite -->
-        <div class="check-item">
-          <div class="check-icon-box status-ready">
-            <i class="fa-solid fa-check"></i>
+      <div class="bg-grid"></div>
+      <!-- Flow Steps -->
+      <div class="process-container">
+        <!-- Step 1 -->
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-icon">
+            <i class="fa-solid fa-crop-simple"></i>
           </div>
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-bold text-slate-800">前提条件のクリア</h3>
-              <span
-                class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">Ready</span>
-            </div>
-            <p class="text-sm text-slate-600">正確なテキストデータと座標情報がIllustratorスクリプトからJSONとして取得できていること。</p>
-          </div>
+          <h3 class="step-title">起点検出<br />Origin Detection</h3>
+          <p class="step-desc">
+            上下左右の余白を除去 描画領域の原点座標を特定する。
+          </p>
         </div>
-        <!-- Item 2: API Integration -->
-        <div class="check-item">
-          <div class="check-icon-box status-plan">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-bold text-slate-800">外部翻訳API連携</h3>
-              <span class="tag tag-api">DeepL / Google</span>
-            </div>
-            <p class="text-sm text-slate-600">JSONに対してあらかじめ一括で翻訳を適用する形。</p>
-            <p class="text-sm text-slate-600">課題：この場合、対応言語は定めておく必要がある。</p>
-          </div>
+        <div class="connector">
+          <i class="fa-solid fa-chevron-right"></i>
         </div>
-        <!-- Item 3: Quality Control -->
-        <div class="check-item">
-          <div class="check-icon-box status-plan">
-            <i class="fa-solid fa-book-atlas"></i>
+        <!-- Step 2 -->
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-icon">
+            <i class="fa-solid fa-calculator"></i>
           </div>
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-bold text-slate-800">品質対策（用語集）</h3>
-              <span class="tag tag-dict">Dictionary</span>
-            </div>
-            <p class="text-sm text-slate-600">地名・固有名詞の用語集(Glossary)を適用。誤訳や表記ゆれを防ぎ、地図特有の略語に対応する。</p>
-          </div>
+          <h3 class="step-title">比率計算<br />Scale Calculation</h3>
+          <p class="step-desc">
+            Illustratorの内部座標と、実際のWeb表示サイズとの拡大縮小比率を算出する。
+          </p>
         </div>
-        <!-- Item 4: UI/UX -->
-        <div class="check-item">
-          <div class="check-icon-box status-wip">
-            <i class="fa-solid fa-mobile-screen"></i>
+        <div class="connector">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+        <!-- Step 3 -->
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-icon">
+            <i class="fa-solid fa-vector-square"></i>
           </div>
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-bold text-slate-800">UI/UX要件</h3>
-            </div>
-            <p class="text-sm text-slate-600">原文・訳文のワンタップ切り替え機能。タップ時のハイライト表示と、詳細対訳パネルの表示。</p>
+          <h3 class="step-title">座標正規化<br />Normalization</h3>
+          <p class="step-desc">
+            ページごとに異なる原点を統一座標系へ変換し、一貫した位置情報を生成する。
+          </p>
+        </div>
+        <div class="connector">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+        <!-- Step 4 -->
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <div class="step-icon">
+            <i class="fa-solid fa-layer-group"></i>
           </div>
+          <h3 class="step-title">地図合成<br />Map Composition</h3>
+          <p class="step-desc">
+            文字情報を除外した「地図背景画像」と、透明な「SVGレイヤー」を重ね合わせる。
+          </p>
+        </div>
+        <div class="connector">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+        <!-- Step 5 -->
+        <div class="step-card" style="border-color: #3b82f6; background-color: #eff6ff;">
+          <div class="step-number" style="background-color: #2563eb;">5</div>
+          <div class="step-icon" style="background-color: #dbeafe; color: #1d4ed8;">
+            <i class="fa-solid fa-pen-nib"></i>
+          </div>
+          <h3 class="step-title" style="color: #1e40af;">SVG描画<br />SVG Rendering</h3>
+          <p class="step-desc" style="color: #1e3a8a;">
+            自由曲線(path)に沿ったテキスト描画や、領域内での折り返し(reflow)を表示する。
+          </p>
         </div>
       </div>
-      <!-- Right: UI Preview & Verification -->
-      <div class="sidebar-container">
-        <!-- UI Preview -->
-        <div class="ui-preview-card">
-          <div class="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-            UI Concept
+      <!-- Visual Preview / Example -->
+      <div class="visual-preview">
+        <div class="preview-item">
+          <div class="bg-slate-100 p-3 rounded-lg text-slate-400">
+            <i class="fa-solid fa-file-code text-2xl"></i>
           </div>
-          <!-- Mock UI -->
-          <div class="mock-ui-header">
-            <span class="text-xs font-bold text-slate-400">Map Viewer</span>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-slate-600">English</span>
-              <div class="toggle-switch">
-                <div class="toggle-knob"></div>
+          <div>
+            <p class="preview-label">Input Data</p>
+            <p class="coordinate-tag">x: 145.2, y: 302.5, rot: 15deg</p>
+          </div>
+        </div>
+        <div class="text-slate-300">
+          <i class="fa-solid fa-arrow-right-long"></i>
+        </div>
+        <div class="preview-item justify-center">
+          <div class="text-center">
+            <p class="preview-label text-blue-500">Transform Matrix</p>
+            <p class="text-xs text-slate-500 font-mono">matrix(0.8, 0.2, -0.2, 0.8, 10, 20)</p>
+          </div>
+        </div>
+        <div class="text-slate-300">
+          <i class="fa-solid fa-arrow-right-long"></i>
+        </div>
+        <div class="preview-item justify-end">
+          <div class="text-right">
+            <p class="preview-label text-green-600">Final Output</p>
+            <div class="flex items-center gap-2 justify-end">
+              <span class="text-xs font-bold text-slate-700">SVG TextPath</span>
+              <div class="bg-green-100 p-2 rounded text-green-600">
+                <i class="fa-solid fa-bezier-curve"></i>
               </div>
             </div>
           </div>
-          <div class="relative h-32 bg-slate-50 rounded border border-slate-200 mb-3 overflow-hidden">
-            <!-- Map lines decoration -->
-            <div class="absolute w-full h-full opacity-20"
-              style="background-image: radial-gradient(#94a3b8 1px, transparent 1px); background-size: 10px 10px;">
-            </div>
-            <svg class="absolute w-full h-full" style="top:0; left:0;">
-              <path d="M-10,50 Q60,20 120,60 T250,40" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
-            </svg>
-            <!-- Translated Text -->
-            <div
-              class="absolute top-8 left-12 bg-white px-2 py-1 rounded shadow-sm border border-indigo-200 text-indigo-700 font-bold text-sm">
-              Mt. Fuji
-            </div>
-            <!-- Original Text Hint -->
-            <div class="absolute top-16 left-16 text-xs text-slate-400 font-serif">
-              (富士山)
-            </div>
-          </div>
-          <div class="bg-indigo-50 p-3 rounded text-xs text-indigo-800 border border-indigo-100">
-            <i class="fa-solid fa-circle-info mr-1"></i>
-            <strong>置き換え表示:</strong> 原文の視認性を損なわず、レイアウトを保持して翻訳を表示。
-          </div>
         </div>
-        <!-- Verification -->
-        <div class="verification-box">
-          <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center">
-            <i class="fa-solid fa-clipboard-check mr-2 text-slate-400"></i>
-            検証プロセス
-          </h3>
-          <ul class="space-y-2">
-            <li class="flex items-center text-sm text-slate-600">
-              <i class="fa-solid fa-robot w-6 text-slate-400 text-xs"></i>
-              <span>自動指標 (BLEUスコア等)</span>
-            </li>
-            <li class="flex items-center text-sm text-slate-600">
-              <i class="fa-solid fa-user-pen w-6 text-slate-400 text-xs"></i>
-              <span>ネイティブによる人手レビュー</span>
-            </li>
-            <li class="flex items-center text-sm text-slate-600">
-              <i class="fa-solid fa-bug w-6 text-slate-400 text-xs"></i>
-              <span>禁止語・不適切用語チェック</span>
-            </li>
-          </ul>
-        </div>
+      </div>
+      <!-- Note -->
+      <div class="mt-4 flex items-center gap-2 text-xs text-slate-500 justify-end">
+        <i class="fa-solid fa-circle-check text-green-500"></i>
+        <p>原文の塗りつぶしではなく、文字レイヤーそのものを置換することで視認性を確保</p>
       </div>
     </div>
   </div>
-
 </body>
 
 </html>
