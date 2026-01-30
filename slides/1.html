@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style="">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="script.js"></script>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #999;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #f8fafc;
+      /* slate-50 */
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      position: relative;
+      display: flex;
+      overflow: hidden;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+    }
+
+    .accent-bar {
+      width: 24px;
+      height: 100%;
+      background-color: #1e40af;
+      /* blue-800 */
+      flex-shrink: 0;
+    }
+
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 80px;
+      padding-right: 40px;
+      z-index: 10;
+    }
+
+    .graphic-area {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 55%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body style="">
+  <div class="slide-container">
+    <!-- Sidebar Accent -->
+    <div class="accent-bar"></div>
+    <!-- Main Content -->
+    <div class="content-wrapper">
+      <div class="mb-8">
+        <p class="text-blue-700 font-bold tracking-widest uppercase mb-3 text-sm">Project Progress Report</p>
+        <div class="w-24 h-2 bg-blue-700"></div>
+      </div>
+      <h1 class="text-6xl font-black text-slate-800 leading-tight mb-6 tracking-tight">
+        地図帳テキスト</h1>
+      <h1 class="text-6xl font-black text-slate-800 leading-tight mb-6 tracking-tight">取得に関する報告
+      </h1>
+      <h2 class="text-3xl text-slate-500 font-light mb-16 leading-snug">
+        技術課題と実装検証について
+      </h2>
+      <div class="flex flex-col gap-5 text-slate-600 border-l-4 border-slate-200 pl-6 py-2">
+        <div class="flex items-center gap-4">
+          <div class="w-8 flex justify-center"><i class="fa-regular fa-calendar text-blue-700 text-xl"></i></div>
+          <p class="text-xl font-medium">2026年1月28日</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-8 flex justify-center"><i class="fa-solid fa-layer-group text-blue-700 text-xl"></i></div>
+          <p class="text-xl">プロジェクト: 地図帳テキスト取得・利用</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-8 flex justify-center"><i class="fa-solid fa-bullseye text-blue-700 text-xl"></i></div>
+          <p class="text-xl">目的: 進捗・課題・解決策の共有</p>
+        </div>
+      </div>
+    </div>
+    <!-- Right Side Graphic Area -->
+    <div class="graphic-area">
+      <canvas height="720" id="heroCanvas" width="700"></canvas>
+    </div>
+    <!-- Decorative Circle -->
+    <div class="absolute bottom-0 right-0 w-80 h-80 bg-blue-50 rounded-tl-full opacity-60 z-[-1]"></div>
+  </div>
+  <script>
+    const canvas = document.getElementById('heroCanvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Draw Grid Background (Manual drawing instead of CSS gradient)
+      ctx.strokeStyle = 'rgba(30, 64, 175, 0.04)'; // Very faint blue
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+
+      for (let x = 0; x <= width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // 2. Draw Network Nodes (Abstract Map Concept)
+      const nodes = [];
+      // Create some fixed nodes to ensure good visual composition
+      const fixedNodes = [
+        { x: width * 0.3, y: height * 0.3 },
+        { x: width * 0.7, y: height * 0.2 },
+        { x: width * 0.5, y: height * 0.5 },
+        { x: width * 0.8, y: height * 0.6 },
+        { x: width * 0.2, y: height * 0.7 },
+        { x: width * 0.6, y: height * 0.8 },
+      ];
+
+      // Add some random nodes
+      for (let i = 0; i < 8; i++) {
+        nodes.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 3 + 2
+        });
+      }
+      // Add fixed nodes
+      fixedNodes.forEach(n => nodes.push({ ...n, radius: 4 }));
+
+      // Draw connections
+      ctx.strokeStyle = 'rgba(30, 64, 175, 0.15)'; // blue-800 low opacity
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 250) {
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw nodes
+      nodes.forEach(node => {
+        // Outer glow
+        ctx.fillStyle = 'rgba(30, 64, 175, 0.1)';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Core
+        ctx.fillStyle = '#1e40af';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 3. Draw Scanning Boxes (Text Extraction Metaphor)
+      ctx.strokeStyle = '#2563eb'; // blue-600
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]); // Dashed line
+
+      const boxes = [
+        { x: width * 0.25, y: height * 0.25, w: 140, h: 40 },
+        { x: width * 0.55, y: height * 0.45, w: 100, h: 30 },
+        { x: width * 0.15, y: height * 0.65, w: 160, h: 50 }
+      ];
+
+      boxes.forEach(box => {
+        // Box border
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+
+        // Box fill
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.05)';
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+
+        // "Label" tag on top
+        ctx.fillStyle = '#2563eb';
+        ctx.fillRect(box.x, box.y - 14, 40, 14);
+
+        // Label text simulation (white lines)
+        ctx.fillStyle = 'white';
+        ctx.fillRect(box.x + 4, box.y - 9, 32, 4);
+      });
+
+      ctx.setLineDash([]);
+    }
+
+    draw();
+  </script>
+
+</body>
+
+</html>

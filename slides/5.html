@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style="">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="script.js"></script>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #999;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      position: relative;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+    }
+
+    .header {
+      padding: 30px 60px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+      padding: 40px 60px;
+      gap: 50px;
+    }
+
+    .left-panel {
+      width: 38%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .right-panel {
+      flex: 1;
+      background-color: #f8fafc;
+      /* slate-50 */
+      border-radius: 24px;
+      border: 1px solid #e2e8f0;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Benefits Section */
+    .benefit-card {
+      background-color: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .benefit-icon {
+      width: 44px;
+      height: 44px;
+      background-color: #ecfdf5;
+      /* emerald-50 */
+      color: #059669;
+      /* emerald-600 */
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .benefit-content h4 {
+      color: #1e293b;
+      /* slate-800 */
+      font-weight: 700;
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+
+    .benefit-content p {
+      color: #64748b;
+      /* slate-500 */
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Status Box */
+    .status-box {
+      margin-top: auto;
+      padding: 20px;
+      background-color: #eff6ff;
+      /* blue-50 */
+      border-radius: 12px;
+      border-left: 4px solid #3b82f6;
+      /* blue-500 */
+    }
+
+    /* Architecture Diagram */
+    .diagram-container {
+      flex: 1;
+      position: relative;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Flow Nodes */
+    .flow-node {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      width: 160px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .node-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    /* Connection Lines - using pseudo elements or absolute divs */
+    .connection-line {
+      height: 2px;
+      background-color: #cbd5e1;
+      flex: 1;
+      margin: 0 10px;
+      position: relative;
+    }
+
+    .connection-line::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid #cbd5e1;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+
+    /* Node Styles */
+    .node-source .node-icon {
+      background: #fff1f2;
+      color: #e11d48;
+    }
+
+    /* Rose - Adobe color */
+    .node-script .node-icon {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    /* Amber - JS */
+    .node-data .node-icon {
+      background: #f0f9ff;
+      color: #0284c7;
+    }
+
+    /* Sky - JSON */
+    .node-app .node-icon {
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    /* Green - App */
+
+    .node-label {
+      font-weight: 700;
+      color: #334155;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .node-sub {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .diagram-bg-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+      opacity: 0.3;
+    }
+
+    /* Data Flow Animation */
+    .data-packet {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-color: #3b82f6;
+      border-radius: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      animation: flowData 2s infinite linear;
+    }
+
+    @keyframes flowData {
+      0% {
+        left: 0;
+        opacity: 1;
+      }
+
+      100% {
+        left: 100%;
+        opacity: 0;
+      }
+    }
+
+    .tag-label {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #3b82f6;
+      color: white;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body style="">
+  <div class="slide-container">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <div class="flex items-center gap-3 mb-1">
+          <span class="bg-green-100 text-green-600 p-2 rounded-lg">
+            <i class="fa-solid fa-lightbulb text-xl"></i>
+          </span>
+          <h1 class="text-3xl font-black text-slate-800">新しい解決策：Illustratorスクリプト</h1>
+        </div>
+        <p class="text-slate-500 ml-12">画像処理(OCR)ではなく、元データ構造から直接情報を抽出するアプローチ</p>
+      </div>
+      <div class="text-right">
+        <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">
+          Phase: 検証中
+        </span>
+      </div>
+    </div>
+    <!-- Main Content -->
+    <div class="content-area">
+      <!-- Left Panel: Explanation -->
+      <div class="left-panel">
+        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+          <i class="fa-solid fa-bullseye text-blue-500 mr-2"></i>
+          採用方針とメリット
+        </h3>
+        <!-- Benefit 1 -->
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <i class="fa-solid fa-check-double"></i>
+          </div>
+          <div class="benefit-content">
+            <h4>精度100%の担保</h4>
+            <p>OCRのような誤認識が原理上発生しない</p>
+          </div>
+        </div>
+        <!-- Benefit 2 -->
+        <div class="benefit-card">
+          <div class="benefit-icon" style="background-color: #fff7ed; color: #ea580c;">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div class="benefit-content">
+            <h4>OCR/通信コスト不要</h4>
+            <p>外部APIへの画像送信が不要になる</p>
+          </div>
+        </div>
+        <!-- Status -->
+        <div class="status-box">
+          <h4 class="text-sm font-bold text-blue-800 mb-2 flex items-center">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i>
+            現在の進捗状況
+          </h4>
+          <p class="text-sm text-slate-700 leading-relaxed">
+            サンプルの地図1ページから、<span
+              class="font-bold bg-white px-1 rounded border border-blue-200">全TextFrameオブジェクト</span>をJSON形式で抜き出すところまで実装完了しています。
+          </p>
+        </div>
+      </div>
+      <!-- Right Panel: Diagram -->
+      <div class="right-panel">
+        <div class="diagram-bg-grid"></div>
+        <div class="absolute top-4 left-6 z-20">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Architecture Overview</h3>
+        </div>
+        <div class="diagram-container">
+          <!-- Step 1: Source -->
+          <div class="flow-node node-source">
+            <div class="node-icon"><i class="fa-solid fa-file-pen"></i></div>
+            <div class="node-label">Illustrator Data</div>
+            <div class="node-sub">※アウトライン化前 (.ai)</div>
+          </div>
+          <!-- Link 1 -->
+          <div class="connection-line">
+            <div class="tag-label">Extract</div>
+            <div class="data-packet"></div>
+          </div>
+          <!-- Step 2: Script -->
+          <div class="flow-node node-script">
+            <div class="node-icon"><i class="fa-brands fa-js"></i></div>
+            <div class="node-label">Custom Script</div>
+            <div class="node-sub">JSX / AppleScript</div>
+          </div>
+          <!-- Link 2 -->
+          <div class="connection-line">
+            <div class="tag-label">Output</div>
+            <div class="data-packet" style="animation-delay: 0.5s"></div>
+          </div>
+          <!-- Step 3: Data -->
+          <div class="flow-node node-data">
+            <div class="node-icon"><i class="fa-solid fa-code"></i></div>
+            <div class="node-label">JSON Data</div>
+            <div class="node-sub">Text + 座標</div>
+          </div>
+          <!-- Link 3 -->
+          <div class="connection-line">
+            <div class="tag-label">Render</div>
+            <div class="data-packet" style="animation-delay: 1s"></div>
+          </div>
+          <!-- Step 4: App -->
+          <div class="flow-node node-app">
+            <div class="node-icon"><i class="fa-solid fa-laptop-code"></i></div>
+            <div class="node-label">Web Application</div>
+            <div class="node-sub">地図 + 翻訳レイヤー</div>
+          </div>
+        </div>
+        <!-- Bottom Note in Diagram -->
+        <div
+          class="absolute bottom-0 w-full bg-white border-t border-slate-200 p-4 flex justify-between items-center px-8">
+          <div class="text-xs text-slate-500 font-medium">
+            <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+            文字と座標をJSONにまとめ、表示・ユーザー取得・翻訳などに利用します。
+          </div>
+          <div class="text-xs text-slate-400">
+            Data Flow
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

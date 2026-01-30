@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style="">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="script.js"></script>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #999;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+    }
+
+    /* Header */
+    .header {
+      padding: 30px 60px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Content Layout */
+    .content-area {
+      flex: 1;
+      display: flex;
+      padding: 40px 60px;
+      gap: 50px;
+      background-color: #f8fafc;
+    }
+
+    /* Left Column */
+    .checklist-container {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .check-item {
+      background-color: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      border: 1px solid #e2e8f0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .check-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      border-color: #cbd5e1;
+    }
+
+    .check-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .status-ready {
+      background-color: #dcfce7;
+      color: #15803d;
+    }
+
+    /* Green */
+    .status-plan {
+      background-color: #eff6ff;
+      color: #2563eb;
+    }
+
+    /* Blue */
+    .status-wip {
+      background-color: #fff7ed;
+      color: #c2410c;
+    }
+
+    /* Orange */
+
+    /* Right Column */
+    .sidebar-container {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .ui-preview-card {
+      background-color: white;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      padding: 24px;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mock-ui-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 10px;
+    }
+
+    .toggle-switch {
+      width: 48px;
+      height: 24px;
+      background-color: #2563eb;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .toggle-knob {
+      width: 20px;
+      height: 20px;
+      background-color: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+    }
+
+    .verification-box {
+      background-color: #f1f5f9;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    .tag-api {
+      background-color: #e0e7ff;
+      color: #4338ca;
+    }
+
+    .tag-dict {
+      background-color: #fce7f3;
+      color: #be185d;
+    }
+  </style>
+</head>
+
+<body style="">
+  <div class="slide-container">
+    <!-- Header -->
+    <div class="header bg-white">
+      <div class="flex items-center gap-3">
+        <span class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-sm font-bold">
+          <i class="fa-solid fa-language text-xl"></i>
+        </span>
+        <h1 class="text-3xl font-black text-slate-800">翻訳機能の実装</h1>
+      </div>
+      <div class="flex items-center gap-2 text-slate-500 text-sm font-medium">
+        <span>Phase 3: Integration</span>
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </div>
+    </div>
+    <!-- Main Content -->
+    <div class="content-area">
+      <!-- Left: Checklist -->
+      <div class="checklist-container">
+        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">Implementation Requirements
+        </h2>
+        <!-- Item 1: Prerequisite -->
+        <div class="check-item">
+          <div class="check-icon-box status-ready">
+            <i class="fa-solid fa-check"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800">前提条件のクリア</h3>
+              <span
+                class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">Ready</span>
+            </div>
+            <p class="text-sm text-slate-600">正確なテキストデータと座標情報がIllustratorスクリプトからJSONとして取得できていること。</p>
+          </div>
+        </div>
+        <!-- Item 2: API Integration -->
+        <div class="check-item">
+          <div class="check-icon-box status-plan">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800">外部翻訳API連携</h3>
+              <span class="tag tag-api">DeepL / Google</span>
+            </div>
+            <p class="text-sm text-slate-600">JSONに対してあらかじめ一括で翻訳を適用する形。</p>
+            <p class="text-sm text-slate-600">課題：この場合、対応言語は定めておく必要がある。</p>
+          </div>
+        </div>
+        <!-- Item 3: Quality Control -->
+        <div class="check-item">
+          <div class="check-icon-box status-plan">
+            <i class="fa-solid fa-book-atlas"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800">品質対策（用語集）</h3>
+              <span class="tag tag-dict">Dictionary</span>
+            </div>
+            <p class="text-sm text-slate-600">地名・固有名詞の用語集(Glossary)を適用。誤訳や表記ゆれを防ぎ、地図特有の略語に対応する。</p>
+          </div>
+        </div>
+        <!-- Item 4: UI/UX -->
+        <div class="check-item">
+          <div class="check-icon-box status-wip">
+            <i class="fa-solid fa-mobile-screen"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800">UI/UX要件</h3>
+            </div>
+            <p class="text-sm text-slate-600">原文・訳文のワンタップ切り替え機能。タップ時のハイライト表示と、詳細対訳パネルの表示。</p>
+          </div>
+        </div>
+      </div>
+      <!-- Right: UI Preview & Verification -->
+      <div class="sidebar-container">
+        <!-- UI Preview -->
+        <div class="ui-preview-card">
+          <div class="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+            UI Concept
+          </div>
+          <!-- Mock UI -->
+          <div class="mock-ui-header">
+            <span class="text-xs font-bold text-slate-400">Map Viewer</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-600">English</span>
+              <div class="toggle-switch">
+                <div class="toggle-knob"></div>
+              </div>
+            </div>
+          </div>
+          <div class="relative h-32 bg-slate-50 rounded border border-slate-200 mb-3 overflow-hidden">
+            <!-- Map lines decoration -->
+            <div class="absolute w-full h-full opacity-20"
+              style="background-image: radial-gradient(#94a3b8 1px, transparent 1px); background-size: 10px 10px;">
+            </div>
+            <svg class="absolute w-full h-full" style="top:0; left:0;">
+              <path d="M-10,50 Q60,20 120,60 T250,40" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+            </svg>
+            <!-- Translated Text -->
+            <div
+              class="absolute top-8 left-12 bg-white px-2 py-1 rounded shadow-sm border border-indigo-200 text-indigo-700 font-bold text-sm">
+              Mt. Fuji
+            </div>
+            <!-- Original Text Hint -->
+            <div class="absolute top-16 left-16 text-xs text-slate-400 font-serif">
+              (富士山)
+            </div>
+          </div>
+          <div class="bg-indigo-50 p-3 rounded text-xs text-indigo-800 border border-indigo-100">
+            <i class="fa-solid fa-circle-info mr-1"></i>
+            <strong>置き換え表示:</strong> 原文の視認性を損なわず、レイアウトを保持して翻訳を表示。
+          </div>
+        </div>
+        <!-- Verification -->
+        <div class="verification-box">
+          <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center">
+            <i class="fa-solid fa-clipboard-check mr-2 text-slate-400"></i>
+            検証プロセス
+          </h3>
+          <ul class="space-y-2">
+            <li class="flex items-center text-sm text-slate-600">
+              <i class="fa-solid fa-robot w-6 text-slate-400 text-xs"></i>
+              <span>自動指標 (BLEUスコア等)</span>
+            </li>
+            <li class="flex items-center text-sm text-slate-600">
+              <i class="fa-solid fa-user-pen w-6 text-slate-400 text-xs"></i>
+              <span>ネイティブによる人手レビュー</span>
+            </li>
+            <li class="flex items-center text-sm text-slate-600">
+              <i class="fa-solid fa-bug w-6 text-slate-400 text-xs"></i>
+              <span>禁止語・不適切用語チェック</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

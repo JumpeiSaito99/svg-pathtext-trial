@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" style="">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&amp;display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="script.js"></script>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #999;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      position: relative;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+    }
+
+    .header {
+      padding: 40px 60px 20px;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 20px 60px 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .card-container {
+      display: flex;
+      gap: 30px;
+      height: 420px;
+    }
+
+    .problem-card {
+      flex: 1;
+      background-color: white;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .problem-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      border-color: #94a3b8;
+    }
+
+    .card-visual {
+      height: 160px;
+      background-color: #f8fafc;
+      /* slate-50 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .card-content {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .alert-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background-color: #fee2e2;
+      color: #ef4444;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    /* Visual Illustrations specific styles */
+    .visual-text {
+      font-family: serif;
+      font-weight: bold;
+      color: #334155;
+      position: absolute;
+    }
+
+    /* Distant Chars Visual */
+    .distant-char-1 {
+      left: 25%;
+      font-size: 32px;
+    }
+
+    .distant-char-2 {
+      right: 25%;
+      font-size: 32px;
+    }
+
+    .interference {
+      position: absolute;
+      color: #94a3b8;
+      font-size: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0.7;
+    }
+
+    .scan-line-dashed {
+      position: absolute;
+      top: 50%;
+      left: 15%;
+      right: 15%;
+      height: 2px;
+      border-top: 2px dashed #ef4444;
+      transform: translateY(12px);
+    }
+
+    .x-mark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -10px);
+      color: #ef4444;
+      font-size: 24px;
+      background: #f8fafc;
+      padding: 0 5px;
+    }
+
+    /* Rotated Text Visual */
+    .rotated-text-group {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .rotated-text-1 {
+      top: 45%;
+      left: 25%;
+      transform: rotate(-30deg);
+      font-size: 24px;
+    }
+
+    .rotated-text-2 {
+      top: 25%;
+      right: 25%;
+      writing-mode: vertical-rl;
+      font-size: 24px;
+    }
+
+    .curve-path {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+    }
+
+    /* Complex BG Visual */
+    .bg-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 10px 10px;
+      opacity: 0.5;
+    }
+
+    .map-lines {
+      position: absolute;
+      width: 120%;
+      height: 2px;
+      background: #cbd5e1;
+      transform: rotate(15deg);
+      top: 30%;
+      left: -10%;
+    }
+
+    .map-lines-2 {
+      position: absolute;
+      width: 120%;
+      height: 2px;
+      background: #cbd5e1;
+      transform: rotate(-25deg);
+      top: 70%;
+      left: -10%;
+    }
+
+    .target-text {
+      font-size: 36px;
+      z-index: 5;
+      color: #334155;
+      font-weight: bold;
+      font-family: serif;
+      text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
+      /* Simulating poor contrast separation */
+    }
+
+    .scan-box-fail {
+      position: absolute;
+      border: 2px solid #ef4444;
+      width: 60px;
+      height: 40px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .impact-box {
+      margin-top: 30px;
+      background-color: #fef2f2;
+      border: 1px solid #fee2e2;
+      border-radius: 8px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+    }
+  </style>
+</head>
+
+<body style="">
+  <div class="slide-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="bg-red-100 text-red-600 p-2 rounded-lg">
+          <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </span>
+        <h1 class="text-3xl font-black text-slate-800">OCR方式の問題点（地図帳特有）</h1>
+      </div>
+      <p class="text-slate-500 ml-12">高社で実装したOCRの仕組みでも、地図帳では十分な精度が出ない3つの主要因</p>
+    </div>
+    <!-- Main Content -->
+    <div class="content-area">
+      <div class="card-container">
+        <!-- Issue 1: 離れ文字 -->
+        <div class="problem-card">
+          <div class="card-visual">
+            <div class="alert-badge"><i class="fa-solid fa-arrows-left-right"></i> DISTANCE</div>
+            <span class="visual-text distant-char-1">東</span>
+            <span class="visual-text interference">（都）</span>
+            <span class="visual-text distant-char-2">京</span>
+            <div class="scan-line-dashed"></div>
+            <div class="x-mark"><i class="fa-solid fa-xmark"></i></div>
+          </div>
+          <div class="card-content">
+            <h3 class="text-xl font-bold text-slate-800 mb-3">離れ文字と混在</h3>
+            <p class="text-slate-600 text-sm leading-relaxed mb-4">
+              大きく間隔の空いた文字列の間に別情報が混在</p>
+            <ul class="mt-auto space-y-2">
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-circle-xmark text-red-400 mt-1 text-xs"></i>
+                <span>1つの単語として結合できない</span>
+              </li>
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-circle-xmark text-red-400 mt-1 text-xs"></i>
+                <span>間に別の地名や記号が誤検知される</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <!-- Issue 2: 多様な向き -->
+        <div class="problem-card">
+          <div class="card-visual">
+            <div class="alert-badge"><i class="fa-solid fa-rotate"></i> DIRECTION</div>
+            <div class="rotated-text-group">
+              <span class="visual-text rotated-text-1">山脈</span>
+              <span class="visual-text rotated-text-2">川</span>
+              <svg class="curve-path" height="100%" width="100%">
+                <path d="M40,140 Q150,20 280,140" fill="none" stroke="#cbd5e1" stroke-dasharray="4" stroke-width="2">
+                </path>
+              </svg>
+            </div>
+          </div>
+          <div class="card-content">
+            <h3 class="text-xl font-bold text-slate-800 mb-3">文字の向きが多様</h3>
+            <p class="text-slate-600 text-sm leading-relaxed mb-4">縦書き、斜め書き、曲線配置など自由な配置</p>
+            <ul class="mt-auto space-y-2">
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-circle-xmark text-red-400 mt-1 text-xs"></i>
+                <span>水平テキスト前提のOCRで誤認識</span>
+              </li>
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-circle-xmark text-red-400 mt-1 text-xs"></i>
+                <span>読み順の特定が不安定</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <!-- Issue 3: 背景複雑 -->
+        <div class="problem-card">
+          <div class="card-visual">
+            <div class="alert-badge"><i class="fa-solid fa-layer-group"></i> BACKGROUND</div>
+            <div class="bg-pattern"></div>
+            <div class="map-lines"></div>
+            <div class="map-lines-2"></div>
+            <span class="target-text">地名</span>
+            <div class="scan-box-fail"></div>
+          </div>
+          <div class="card-content">
+            <h3 class="text-xl font-bold text-slate-800 mb-3">複雑な背景との干渉</h3>
+            <p class="text-slate-600 text-sm leading-relaxed mb-4">背景の地図が文字と重なり、認識率が低下</p>
+            <ul class="mt-auto space-y-2">
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-circle-xmark text-red-400 mt-1 text-xs"></i>
+                <span>ノイズ除去が困難</span>
+              </li>
+              <li class="flex items-start gap-2 text-sm text-slate-500">
+                <i class="fa-solid fa-info-circle text-blue-400 mt-1 text-xs"></i>
+                <span class="text-xs">文字レイヤー画像でも精度不足</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Impact Summary -->
+      <div class="impact-box">
+        <span class="font-bold text-red-700 text-sm uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-chart-line"></i> Business Impact
+        </span>
+        <div class="h-6 w-px bg-red-200"></div>
+        <div class="flex gap-10">
+          <div class="flex items-center gap-2 text-slate-700 font-medium">
+            <i class="fa-solid fa-ban text-red-500"></i>
+            読み取りたい語句が選択できない
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-medium">
+            <i class="fa-solid fa-bug text-red-500"></i>
+            誤検出による修正コスト増
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
