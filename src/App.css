@@ -30,11 +30,82 @@
   flex-wrap: wrap;
 }
 
-.headerHint {
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(17, 24, 39, 0.72);
+.mapWrap {
+  position: relative;
+}
+
+.mapHint {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  position: absolute;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(17, 24, 39, 0.9);
+  max-width: min(320px, calc(100% - 20px));
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapHint__text {
+  min-width: 0;
+}
+
+.mapHint__close {
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  font-size: 44px;
+  padding: 0;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: rgba(17, 24, 39, 0.78);
+  line-height: 1;
+  font-weight: 900;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mapHint__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(17, 24, 39, 0.9);
+}
+
+.mapHint__close:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.65);
+  outline-offset: 2px;
+}
+
+.mapHintButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 24, 39, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mapHintButton:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
 }
 
 .headerLeft {
@@ -71,6 +142,39 @@
 .customInput.isActive {
   visibility: visible;
   pointer-events: auto;
+}
+
+.modeButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 24, 39, 0.92);
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+  transition: background-color 150ms ease, border-color 150ms ease, transform 60ms ease, box-shadow 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modeButton:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.modeButton:active {
+  transform: translateY(1px);
+}
+
+.modeButton.isActive {
+  background: #4CAF50;
+  border-color: rgba(0, 0, 0, 0.10);
+  color: white;
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.25);
+}
+
+.modeButton.isActive:hover {
+  background: #43A047;
 }
 
 .toggleSwitch {
@@ -156,8 +260,17 @@
     align-items: stretch;
   }
 
-  .headerHint {
+  .mapHint {
+    top: 8px;
+    right: 8px;
+    padding: 10px 50px 10px 10px;
     font-size: 13px;
+    max-width: calc(100% - 16px);
+  }
+
+  .mapHintButton {
+    top: 8px;
+    right: 8px;
   }
 
   .customInputSlot {
@@ -182,8 +295,48 @@
     border-bottom-color: rgba(255, 255, 255, 0.12);
   }
 
-  .headerHint {
-    color: rgba(255, 255, 255, 0.68);
+  .mapHint {
+    background: rgba(36, 36, 36, 0.92);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  }
+
+  .mapHint__close {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .mapHint__close:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .mapHintButton {
+    background: rgba(36, 36, 36, 0.92);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  }
+
+  .mapHintButton:hover {
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .modeButton {
+    background: rgba(31, 41, 55, 0.9);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  .modeButton:hover {
+    background: rgba(31, 41, 55, 1);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .modeButton.isActive {
+    border-color: rgba(0, 0, 0, 0.22);
   }
 }
 
@@ -193,9 +346,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -204,6 +359,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

@@ -1,4 +1,4 @@
-import { useId, useRef, useLayoutEffect, useState } from 'react';
+import { useEffect, useId, useRef, useLayoutEffect, useState } from 'react';
 import './App.css'
 
 interface TextPathObject {
@@ -216,6 +216,21 @@ function App() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [draggingPointerId, setDraggingPointerId] = useState<number | null>(null);
   const suppressAddOnPointerUpRef = useRef<number | null>(null);
+  const [isMapHintOpen, setIsMapHintOpen] = useState(() => {
+    try {
+      return localStorage.getItem('mapHintDismissed') !== '1';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mapHintDismissed', isMapHintOpen ? '0' : '1');
+    } catch {
+      // ignore
+    }
+  }, [isMapHintOpen]);
 
   const displayText = (() => {
     switch (textMode) {
@@ -302,16 +317,16 @@ function App() {
   const handleSVGPointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!isEditMode) return;
 
-    // 直前にポイント/削除などの操作をしたポインタは、同じpointerupで点追加しない
-    if (suppressAddOnPointerUpRef.current === event.pointerId) {
-      suppressAddOnPointerUpRef.current = null;
-      return;
-    }
-
     // ドラッグ終了
     if (draggingIndex !== null) {
       event.preventDefault();
       handleEndDrag();
+      return;
+    }
+
+    // 直前にポイント/削除などの操作をしたポインタは、同じpointerupで点追加しない
+    if (suppressAddOnPointerUpRef.current === event.pointerId) {
+      suppressAddOnPointerUpRef.current = null;
       return;
     }
 
@@ -332,42 +347,21 @@ function App() {
             <div className="headerLeft">
               <button
                 onClick={() => setTextMode('japanese')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: textMode === 'japanese' ? '#4CAF50' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
+                className={`modeButton ${textMode === 'japanese' ? 'isActive' : ''}`}
               >
                 日本語
               </button>
               {sampleTextPath.textEng && (
                 <button
                   onClick={() => setTextMode('english')}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: textMode === 'english' ? '#4CAF50' : '#ccc',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
+                  className={`modeButton ${textMode === 'english' ? 'isActive' : ''}`}
                 >
                   English
                 </button>
               )}
               <button
                 onClick={() => setTextMode('custom')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: textMode === 'custom' ? '#4CAF50' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
+                className={`modeButton ${textMode === 'custom' ? 'isActive' : ''}`}
               >
                 カスタム
               </button>
@@ -390,97 +384,113 @@ function App() {
               <ToggleSwitch checked={followPath} onChange={setFollowPath} label="文字の回転" onColor="#3B82F6" />
             </div>
           </div>
-          {isEditMode && (
-             <div className="headerHint">空いている場所をタップ／クリックすると点を追加できます</div>
-          )}
         </div>
-        <svg
-        className="mainSvg"
-        viewBox="0 0 800 600"
-        onPointerMove={handleSVGPointerMove}
-        onPointerUp={handleSVGPointerUp}
-        onPointerCancel={handleEndDrag}
-        onPointerLeave={handleEndDrag}
-        style={{
-          cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'crosshair' : 'default',
-          userSelect: isEditMode ? 'none' : 'auto',
-          WebkitUserSelect: isEditMode ? 'none' : 'auto',
-          MozUserSelect: isEditMode ? 'none' : 'auto',
-          touchAction: isEditMode ? 'none' : 'pan-x pan-y',
-          ...(isEditMode && { msUserSelect: 'none' as const })
-        } as React.CSSProperties}
-      >
-        {/* 背景画像を重ねて表示 */}
-        <image href="/01_terrain.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
-        <image href="/02_lake.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
-        <image href="/03_land_rf.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
-        <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
-        {isEditMode && charCoords.map((coord, index) => (
-          <g key={index}>
-            {/* ドラッグ判定用の透明なヒットボックス（44px四方） */}
-            <rect
-              x={coord.x - 22}
-              y={coord.y - 22}
-              width="44"
-              height="44"
-              fill="transparent"
-              data-noadd="true"
-              style={{ cursor: draggingIndex === index ? 'grabbing' : 'grab' }}
-              onPointerDown={(e) => handlePointPointerDown(index, e)}
-            />
-            {/* 見た目用：44pxいっぱいのポイント表示 */}
-            <circle
-              cx={coord.x}
-              cy={coord.y}
-              r="22"
-              fill="rgba(33, 150, 243, 0.18)"
-              stroke="#2196F3"
-              strokeWidth="2"
-              style={{ pointerEvents: 'none' }}
-            />
-            {/* 中心の目印 */}
-            <circle
-              cx={coord.x}
-              cy={coord.y}
-              r="4"
-              fill="#2196F3"
-              stroke="white"
-              strokeWidth="2"
-              style={{ pointerEvents: 'none' }}
-            />
-            {charCoords.length > 2 && (
-              <g
-                transform={`translate(${coord.x + 40}, ${coord.y - 40})`}
-                style={{ cursor: 'pointer' }}
-                data-noadd="true"
-              >
+        <div className="mapWrap">
+          {isEditMode && (
+            <>
+              {isMapHintOpen && (
+                <div className="mapHint" role="note" aria-label="編集のヒント">
+                  <div className="mapHint__text">空いている場所をタップ／クリックすると点を追加できます</div>
+                  <button
+                    type="button"
+                    className="mapHint__close"
+                    aria-label="ヒントを閉じる"
+                    onClick={() => setIsMapHintOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          <svg
+            className="mainSvg"
+            viewBox="0 0 800 600"
+            onPointerMove={handleSVGPointerMove}
+            onPointerUp={handleSVGPointerUp}
+            onPointerCancel={handleEndDrag}
+            onPointerLeave={handleEndDrag}
+            style={{
+              cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'crosshair' : 'default',
+              userSelect: isEditMode ? 'none' : 'auto',
+              WebkitUserSelect: isEditMode ? 'none' : 'auto',
+              MozUserSelect: isEditMode ? 'none' : 'auto',
+              touchAction: isEditMode ? 'none' : 'pan-x pan-y',
+              ...(isEditMode && { msUserSelect: 'none' as const })
+            } as React.CSSProperties}
+          >
+            {/* 背景画像を重ねて表示 */}
+            <image href="/01_terrain.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <image href="/02_lake.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <image href="/03_land_rf.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
+            {isEditMode && charCoords.map((coord, index) => (
+              <g key={index}>
+                {/* ドラッグ判定用の透明なヒットボックス（44px四方） */}
                 <rect
-                  x={-22}
-                  y={-22}
+                  x={coord.x - 22}
+                  y={coord.y - 22}
                   width="44"
                   height="44"
                   fill="transparent"
-                  onPointerDown={(e) => handleDeletePoint(index, e)}
+                  data-noadd="true"
+                  style={{ cursor: draggingIndex === index ? 'grabbing' : 'grab' }}
+                  onPointerDown={(e) => handlePointPointerDown(index, e)}
                 />
-                <text
-                  x="0"
-                  y="0"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="44"
-                  fill="#ef4444"
-                  fontWeight="900"
-                  stroke="#ef4444"
-                  strokeWidth="0.75"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >
-                  ×
-                </text>
+                {/* 見た目用：44pxいっぱいのポイント表示 */}
+                <circle
+                  cx={coord.x}
+                  cy={coord.y}
+                  r="22"
+                  fill="rgba(33, 150, 243, 0.18)"
+                  stroke="#2196F3"
+                  strokeWidth="2"
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* 中心の目印 */}
+                <circle
+                  cx={coord.x}
+                  cy={coord.y}
+                  r="4"
+                  fill="#2196F3"
+                  stroke="white"
+                  strokeWidth="2"
+                  style={{ pointerEvents: 'none' }}
+                />
+                {charCoords.length > 2 && (
+                  <g
+                    transform={`translate(${coord.x + 40}, ${coord.y - 40})`}
+                    style={{ cursor: 'pointer' }}
+                    data-noadd="true"
+                  >
+                    <rect
+                      x={-22}
+                      y={-22}
+                      width="44"
+                      height="44"
+                      fill="transparent"
+                      onPointerDown={(e) => handleDeletePoint(index, e)}
+                    />
+                    <text
+                      x="0"
+                      y="0"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize="44"
+                      fill="#ef4444"
+                      fontWeight="900"
+                      stroke="#ef4444"
+                      strokeWidth="0.75"
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    >
+                      ×
+                    </text>
+                  </g>
+                )}
               </g>
-            )}
-          </g>
-        ))}
-        </svg>
+            ))}
+          </svg>
+        </div>
       </div>
     </>
   )
