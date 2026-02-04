@@ -150,6 +150,45 @@ function TextPathDisplay({
   );
 }
 
+function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+  onColor,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  onColor: string;
+}) {
+  const styleVars = {
+    ['--ts-on-color' as never]: onColor,
+  } as React.CSSProperties;
+
+  return (
+    <label
+      className={`toggleSwitch ${checked ? 'isChecked' : ''}`}
+      style={styleVars}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        role="switch"
+        aria-checked={checked}
+        className="toggleSwitch__input"
+      />
+      <span
+        aria-hidden="true"
+        className="toggleSwitch__track"
+      >
+        <span className="toggleSwitch__knob" />
+      </span>
+      <span className="toggleSwitch__label">{label}</span>
+    </label>
+  );
+}
+
 function App() {
   // サンプルデータ：1文字ごとに座標を指定（4文字なので4つの座標）
   const initialTextPath: TextPathObject = {
@@ -175,6 +214,8 @@ function App() {
   const [customText, setCustomText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [draggingPointerId, setDraggingPointerId] = useState<number | null>(null);
+  const suppressAddOnPointerUpRef = useRef<number | null>(null);
 
   const displayText = (() => {
     switch (textMode) {
@@ -187,8 +228,11 @@ function App() {
     }
   })();
 
-  // SVG座標系でのマウス位置を取得
-  const getSVGPoint = (event: React.MouseEvent<SVGSVGElement>, svg: SVGSVGElement): { x: number; y: number } => {
+  // SVG座標系でのポインタ位置を取得（マウス/タッチ共通）
+  const getSVGPoint = (
+    event: { clientX: number; clientY: number },
+    svg: SVGSVGElement
+  ): { x: number; y: number } => {
     const rect = svg.getBoundingClientRect();
     const viewBox = svg.viewBox.baseVal;
     const scaleX = viewBox.width / rect.width;
@@ -199,11 +243,14 @@ function App() {
     };
   };
 
-  const handleMouseDown = (index: number, event: React.MouseEvent<SVGCircleElement>) => {
+  const handlePointPointerDown = (index: number, event: React.PointerEvent<SVGRectElement>) => {
     if (!isEditMode) return;
     event.preventDefault();
     event.stopPropagation();
     setDraggingIndex(index);
+    setDraggingPointerId(event.pointerId);
+    suppressAddOnPointerUpRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   // 編集モード中にテキスト選択を防ぐ
@@ -223,8 +270,10 @@ function App() {
     };
   }, [isEditMode]);
 
-  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+  const handleSVGPointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!isEditMode || draggingIndex === null) return;
+    if (draggingPointerId !== null && event.pointerId !== draggingPointerId) return;
+    event.preventDefault();
 
     const svg = event.currentTarget;
     const point = getSVGPoint(event, svg);
@@ -235,134 +284,129 @@ function App() {
     });
   };
 
-  const handleMouseUp = () => {
+  const handleEndDrag = () => {
     setDraggingIndex(null);
+    setDraggingPointerId(null);
+    suppressAddOnPointerUpRef.current = null;
   };
 
   // ポイント削除
-  const handleDeletePoint = (index: number, event: React.MouseEvent) => {
+  const handleDeletePoint = (index: number, event: React.PointerEvent) => {
+    event.preventDefault();
     event.stopPropagation();
-    if (charCoords.length > 2) {
-      setCharCoords(charCoords.filter((_, i) => i !== index));
-    }
+    suppressAddOnPointerUpRef.current = event.pointerId;
+    setCharCoords(prev => (prev.length > 2 ? prev.filter((_, i) => i !== index) : prev));
   };
 
-  // SVG内のクリック位置にポイントを追加
-  const handleSVGClick = (event: React.MouseEvent<SVGSVGElement>) => {
-    if (!isEditMode || draggingIndex !== null) return;
-    // ポイント上をクリックした場合は追加しない
-    if ((event.target as SVGElement).tagName === 'circle') return;
+  // SVG内のタップ/クリック位置にポイントを追加（操作対象の上では追加しない）
+  const handleSVGPointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!isEditMode) return;
+
+    // 直前にポイント/削除などの操作をしたポインタは、同じpointerupで点追加しない
+    if (suppressAddOnPointerUpRef.current === event.pointerId) {
+      suppressAddOnPointerUpRef.current = null;
+      return;
+    }
+
+    // ドラッグ終了
+    if (draggingIndex !== null) {
+      event.preventDefault();
+      handleEndDrag();
+      return;
+    }
+
+    // 既存ポイント/削除ボタン上なら追加しない
+    const target = event.target as Element | null;
+    if (target?.closest?.('[data-noadd="true"]')) return;
 
     const svg = event.currentTarget;
     const point = getSVGPoint(event, svg);
-    setCharCoords([...charCoords, point]);
+    setCharCoords(prev => [...prev, point]);
   };
 
   return (
     <>
-      <div style={{ marginBottom: '10px' }}>
-        <button
-          onClick={() => setTextMode('japanese')}
-          style={{
-            marginRight: '10px',
-            padding: '8px 16px',
-            backgroundColor: textMode === 'japanese' ? '#4CAF50' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          日本語
-        </button>
-        {sampleTextPath.textEng && (
-          <button
-            onClick={() => setTextMode('english')}
-            style={{
-              marginRight: '10px',
-              padding: '8px 16px',
-              backgroundColor: textMode === 'english' ? '#4CAF50' : '#ccc',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            English
-          </button>
-        )}
-        <button
-          onClick={() => setTextMode('custom')}
-          style={{
-            marginRight: '10px',
-            padding: '8px 16px',
-            backgroundColor: textMode === 'custom' ? '#4CAF50' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          カスタム
-        </button>
-        {textMode === 'custom' && (
-          <input
-            type="text"
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            placeholder="テキストを入力"
-            style={{
-              padding: '8px 12px',
-              fontSize: '14px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              marginLeft: '10px',
-              minWidth: '200px'
-            }}
-          />
-        )}
-        <button
-          onClick={() => setIsEditMode(!isEditMode)}
-          style={{
-            marginLeft: '10px',
-            padding: '8px 16px',
-            backgroundColor: isEditMode ? '#FF9800' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {isEditMode ? '編集終了' : 'ポイント編集'}
-        </button>
-        <button
-          onClick={() => setFollowPath(!followPath)}
-          style={{
-            marginLeft: '10px',
-            padding: '8px 16px',
-            backgroundColor: followPath ? '#2196F3' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {followPath ? 'パス沿い' : '回転なし'}
-        </button>
-      </div>
-      <svg
-        width="800"
-        height="600"
+      <div className="app">
+        <div className="headerBar">
+          <div className="headerRow">
+            <div className="headerLeft">
+              <button
+                onClick={() => setTextMode('japanese')}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: textMode === 'japanese' ? '#4CAF50' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                日本語
+              </button>
+              {sampleTextPath.textEng && (
+                <button
+                  onClick={() => setTextMode('english')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: textMode === 'english' ? '#4CAF50' : '#ccc',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  English
+                </button>
+              )}
+              <button
+                onClick={() => setTextMode('custom')}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: textMode === 'custom' ? '#4CAF50' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                カスタム
+              </button>
+              {/* レイアウト固定用：カスタム入力欄は常に領域だけ確保しておく */}
+              <div className="customInputSlot">
+                <input
+                  type="text"
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  placeholder="テキストを入力"
+                  disabled={textMode !== 'custom'}
+                  aria-hidden={textMode !== 'custom'}
+                  tabIndex={textMode === 'custom' ? 0 : -1}
+                  className={`customInput ${textMode === 'custom' ? 'isActive' : ''}`}
+                />
+              </div>
+            </div>
+            <div className="headerRight">
+              <ToggleSwitch checked={isEditMode} onChange={setIsEditMode} label="パス編集" onColor="#F59E0B" />
+              <ToggleSwitch checked={followPath} onChange={setFollowPath} label="文字の回転" onColor="#3B82F6" />
+            </div>
+          </div>
+          {isEditMode && (
+             <div className="headerHint">空いている場所をタップ／クリックすると点を追加できます</div>
+          )}
+        </div>
+        <svg
+        className="mainSvg"
         viewBox="0 0 800 600"
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={handleSVGClick}
+        onPointerMove={handleSVGPointerMove}
+        onPointerUp={handleSVGPointerUp}
+        onPointerCancel={handleEndDrag}
+        onPointerLeave={handleEndDrag}
         style={{
           cursor: draggingIndex !== null ? 'grabbing' : isEditMode ? 'crosshair' : 'default',
           userSelect: isEditMode ? 'none' : 'auto',
           WebkitUserSelect: isEditMode ? 'none' : 'auto',
           MozUserSelect: isEditMode ? 'none' : 'auto',
+          touchAction: isEditMode ? 'none' : 'pan-x pan-y',
           ...(isEditMode && { msUserSelect: 'none' as const })
         } as React.CSSProperties}
       >
@@ -373,46 +417,61 @@ function App() {
         <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
         {isEditMode && charCoords.map((coord, index) => (
           <g key={index}>
-            {/* ドラッグ判定用の透明な大きな円 */}
-            <circle
-              cx={coord.x}
-              cy={coord.y}
-              r="15"
+            {/* ドラッグ判定用の透明なヒットボックス（44px四方） */}
+            <rect
+              x={coord.x - 22}
+              y={coord.y - 22}
+              width="44"
+              height="44"
               fill="transparent"
+              data-noadd="true"
               style={{ cursor: draggingIndex === index ? 'grabbing' : 'grab' }}
-              onMouseDown={(e) => handleMouseDown(index, e)}
+              onPointerDown={(e) => handlePointPointerDown(index, e)}
             />
-            {/* 見た目用の小さな円 */}
+            {/* 見た目用：44pxいっぱいのポイント表示 */}
             <circle
               cx={coord.x}
               cy={coord.y}
-              r="6"
+              r="22"
+              fill="rgba(33, 150, 243, 0.18)"
+              stroke="#2196F3"
+              strokeWidth="2"
+              style={{ pointerEvents: 'none' }}
+            />
+            {/* 中心の目印 */}
+            <circle
+              cx={coord.x}
+              cy={coord.y}
+              r="4"
               fill="#2196F3"
               stroke="white"
               strokeWidth="2"
               style={{ pointerEvents: 'none' }}
             />
-            {/* 削除ボタン（最小2点の場合は表示しない） */}
             {charCoords.length > 2 && (
               <g
-                transform={`translate(${coord.x + 12}, ${coord.y - 12})`}
+                transform={`translate(${coord.x + 40}, ${coord.y - 40})`}
                 style={{ cursor: 'pointer' }}
-                onClick={(e) => handleDeletePoint(index, e)}
+                data-noadd="true"
               >
-                <circle
-                  r="8"
-                  fill="#f44336"
-                  stroke="white"
-                  strokeWidth="1.5"
+                <rect
+                  x={-22}
+                  y={-22}
+                  width="44"
+                  height="44"
+                  fill="transparent"
+                  onPointerDown={(e) => handleDeletePoint(index, e)}
                 />
                 <text
                   x="0"
                   y="0"
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fontSize="10"
-                  fill="white"
-                  fontWeight="bold"
+                  fontSize="44"
+                  fill="#ef4444"
+                  fontWeight="900"
+                  stroke="#ef4444"
+                  strokeWidth="0.75"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
                   ×
@@ -421,7 +480,8 @@ function App() {
             )}
           </g>
         ))}
-      </svg>
+        </svg>
+      </div>
     </>
   )
 }
