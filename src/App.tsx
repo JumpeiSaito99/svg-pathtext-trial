@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useLayoutEffect, useState } from 'react';
 import './App.css'
+import terrainImage from '/01_terrain.webp';
+import lakeImage from '/02_lake.webp';
+import landImage from '/03_land_rf.webp';
 
 interface TextPathObject {
   text: string;
@@ -420,9 +423,9 @@ function App() {
             } as React.CSSProperties}
           >
             {/* 背景画像を重ねて表示 */}
-            <image href="/01_terrain.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
-            <image href="/02_lake.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
-            <image href="/03_land_rf.webp" width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <image href={terrainImage} width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <image href={lakeImage} width="800" height="600" preserveAspectRatio="xMidYMid slice" />
+            <image href={landImage} width="800" height="600" preserveAspectRatio="xMidYMid slice" />
             <TextPathDisplay textPathObject={sampleTextPath} displayText={displayText} followPath={followPath} />
             {isEditMode && charCoords.map((coord, index) => (
               <g key={index}>
