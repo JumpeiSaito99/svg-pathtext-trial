@@ -31,8 +31,24 @@
       height: 720px;
       display: flex;
       background-color: #fff;
+      position: relative;
       transform-origin: center center;
       transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+    }
+
+    .confidential {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #64748b;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      z-index: 100;
+      font-family: 'Noto Sans JP', sans-serif;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+      padding-bottom: 2px;
     }
 
     /* Left Sidebar for Context */
@@ -106,6 +122,7 @@
 
 <body style="">
   <div class="slide-container">
+    <div class="confidential">Confidential</div>
     <!-- Left Column: Background -->
     <div class="sidebar">
       <div class="mb-12">

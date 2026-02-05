@@ -33,9 +33,25 @@
       display: flex;
       flex-direction: column;
       background-color: #fff;
+      position: relative;
       transform-origin: center center;
       transform: scale(min(calc(100vw / 3840), calc(100vh / 2160)));
       page-break-after: always;
+    }
+
+    .confidential {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #64748b;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      z-index: 100;
+      font-family: 'Noto Sans JP', sans-serif;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+      padding-bottom: 2px;
     }
 
     /* Header */
@@ -44,7 +60,6 @@
       border-bottom: 1px solid #f1f5f9;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       background-color: white;
       z-index: 10;
     }
@@ -210,6 +225,7 @@
 
 <body>
   <div class="slide-container">
+    <div class="confidential">Confidential</div>
     <!-- Header -->
     <div class="header">
       <div class="flex items-center gap-3">
@@ -219,8 +235,6 @@
         <h1 class="text-3xl font-black text-slate-800">技術的アプローチ：座標変換と表示方法</h1>
       </div>
       <div class="flex items-center gap-2 text-slate-400 text-sm">
-        <i class="fa-solid fa-map-location-dot"></i>
-        <span>Coordinate Transformation &amp; Rendering</span>
       </div>
     </div>
     <!-- Main Content -->

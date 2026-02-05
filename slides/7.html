@@ -38,13 +38,27 @@
       page-break-after: always;
     }
 
+    .confidential {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #64748b;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      z-index: 100;
+      font-family: 'Noto Sans JP', sans-serif;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+      padding-bottom: 2px;
+    }
+
     /* Header */
     .header {
       padding: 30px 60px 20px;
       border-bottom: 1px solid #f1f5f9;
       display: flex;
       align-items: center;
-      justify-content: space-between;
     }
 
     /* Content Layout */
@@ -166,6 +180,7 @@
 
 <body style="">
   <div class="slide-container">
+    <div class="confidential">Confidential</div>
     <!-- Header -->
     <div class="header">
       <div class="flex items-center gap-3">
@@ -173,10 +188,6 @@
           Tech Issue #01
         </span>
         <h1 class="text-3xl font-black text-slate-800">技術的アプローチ：文字のグループ化</h1>
-      </div>
-      <div class="flex items-center gap-2 text-slate-400 text-sm">
-        <i class="fa-solid fa-code"></i>
-        <span>Implementation Logic</span>
       </div>
     </div>
     <!-- Main Content -->
