@@ -140,8 +140,8 @@ export function MapPage() {
                           <text
                             // biome-ignore lint/suspicious/noArrayIndexKey: 同一レイヤー内で一意のため
                             key={`layer-${layerIndex}-obj-${i}`}
-                            x={obj.x / 0.9 - 100}
-                            y={obj.y / 0.9 - 1700}
+                            x={obj.x}
+                            y={obj.y}
                             fontSize={obj.fontSize}
                             fontFamily="sans-serif"
                             fill="#111"
