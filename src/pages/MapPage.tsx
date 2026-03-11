@@ -7,6 +7,7 @@ const ZOOM_STEP = 1.15;
 
 // JSON 08小図35-36_改行空白除去版.json の型
 interface MapTextObject {
+  fillColor: string | undefined;
   type: 'text';
   content: string;
   x: number;
@@ -277,7 +278,7 @@ export function MapPage() {
                             y={obj.y}
                             fontSize={obj.fontSize}
                             fontFamily="sans-serif"
-                            fill="#111"
+                            fill={obj.fillColor}
                             style={{ pointerEvents: 'none' }}
                           >
                             {obj.content}

@@ -3,7 +3,7 @@
 	var doc = app.activeDocument;
 	var artboard = doc.artboards[doc.artboards.getActiveArtboardIndex()];
 	var rect = artboard.artboardRect;
-	var h = rect[3] - rect[1];
+	var h = rect[1] - rect[3];
 	var w = rect[2] - rect[0];
 
 	var result = {
@@ -12,6 +12,60 @@
 		height: h,
 		layers: [],
 	};
+
+	// 文字色（Color）を #RRGGBB 形式に変換
+	function getFillColorHex(color) {
+		try {
+			if (!color) return "";
+			if (color.typename === "RGBColor") {
+				var r = Math.round(color.red);
+				var g = Math.round(color.green);
+				var b = Math.round(color.blue);
+				var pad = function (n) {
+					var s = n.toString(16);
+					return s.length === 1 ? "0" + s : s;
+				};
+				return "#" + pad(r) + pad(g) + pad(b);
+			}
+			if (color.typename === "CMYKColor") {
+				var c = color.cyan / 100;
+				var m = color.magenta / 100;
+				var y = color.yellow / 100;
+				var k = color.black / 100;
+				var r = 255 * (1 - c) * (1 - k);
+				var g = 255 * (1 - m) * (1 - k);
+				var b = 255 * (1 - y) * (1 - k);
+				r = Math.min(255, Math.max(0, Math.round(r)));
+				g = Math.min(255, Math.max(0, Math.round(g)));
+				b = Math.min(255, Math.max(0, Math.round(b)));
+				var p = function (n) {
+					var s = n.toString(16);
+					return s.length === 1 ? "0" + s : s;
+				};
+				return "#" + p(r) + p(g) + p(b);
+			}
+			return "";
+		} catch (e) {
+			return "";
+		}
+	}
+
+	// 斜体かどうかを characterAttributes から判定
+	function getItalic(ca) {
+		try {
+			if (!ca) return false;
+			if (ca.italics === true) return true;
+			if (ca.textFont) {
+				var name = (ca.textFont.name || "").toLowerCase();
+				var psName = (ca.textFont.postscriptName || "").toLowerCase();
+				if (name.indexOf("italic") >= 0 || name.indexOf("oblique") >= 0) return true;
+				if (psName.indexOf("italic") >= 0 || psName.indexOf("oblique") >= 0) return true;
+			}
+			return false;
+		} catch (e) {
+			return false;
+		}
+	}
 
 	// 画面更新を止めてフリーズとエラーを防止
 	app.screenUpdating = false;
@@ -29,12 +83,17 @@
 			for (var t = 0; t < layer.textFrames.length; t++) {
 				var tf = layer.textFrames[t];
 				try {
+					var ca = tf.textRange.characterAttributes;
+					var fillHex = getFillColorHex(ca.fillColor);
+					var isItalic = getItalic(ca);
 					layerData.objects.push({
 						type: "text",
 						content: tf.contents,
 						x: tf.position[0] - rect[0],
 						y: rect[1] - tf.position[1],
-						fontSize: tf.textRange.characterAttributes.size,
+						fontSize: ca.size,
+						fillColor: fillHex,
+						italic: isItalic,
 					});
 				} catch (e) {}
 			}
