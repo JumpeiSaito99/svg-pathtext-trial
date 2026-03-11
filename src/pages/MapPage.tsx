@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import kyushuImage from '../assets/レリーフ4c_九州地方.png';
+
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 8;
+const ZOOM_STEP = 1.15;
 
 // JSON 08小図35-36_改行空白除去版.json の型
 interface MapTextObject {
@@ -27,6 +31,11 @@ const MAP_JSON_URL = `${(import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')}/te
 export function MapPage() {
   const [mapDoc, setMapDoc] = useState<MapDocument | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   useEffect(() => {
     fetch(MAP_JSON_URL)
@@ -52,11 +61,57 @@ export function MapPage() {
     setLayerVisibility((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
+  const zoomIn = () => setZoom((z) => Math.min(MAX_ZOOM, z * ZOOM_STEP));
+  const zoomOut = () => setZoom((z) => Math.max(MIN_ZOOM, z / ZOOM_STEP));
+
   const loaded = mapDoc !== null;
   const { width, height, layers } = mapDoc ?? {
     width: 1000,
     height: 1000,
     layers: [] as MapLayer[]
+  };
+  const viewW = width / zoom;
+  const viewH = height / zoom;
+  const maxPanX = Math.max(0, width - viewW);
+  const maxPanY = Math.max(0, height - viewH);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: pan.x,
+      panY: pan.y
+    };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const start = dragStartRef.current;
+    if (!start) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const scaleX = viewW / rect.width;
+    const scaleY = viewH / rect.height;
+    let dx = (start.x - e.clientX) * scaleX;
+    let dy = (start.y - e.clientY) * scaleY;
+    const newX = Math.max(0, Math.min(maxPanX, start.panX + dx));
+    const newY = Math.max(0, Math.min(maxPanY, start.panY + dy));
+    setPan({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    dragStartRef.current = null;
+    setIsDragging(false);
+  };
+
+  const panClamped = {
+    x: Math.max(0, Math.min(pan.x, maxPanX)),
+    y: Math.max(0, Math.min(pan.y, maxPanY))
   };
 
   return (
@@ -106,21 +161,99 @@ export function MapPage() {
           </div>
         )}
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
           {loaded && (
-            <svg
-              className="mainSvg"
-              viewBox={`0 0 ${width} ${height}`}
-              preserveAspectRatio="xMidYMid meet"
-              style={{
-                width: '100%',
-                maxHeight: '85vh',
-                background: '#fafafa',
-                border: '1px solid #e5e7eb',
-                borderRadius: 8
-              }}
-              aria-label="08小図35-36のテキスト・オブジェクト表示"
-            >
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  border: '1px solid #e5e7eb',
+                  background: '#fff',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={zoomIn}
+                  disabled={zoom >= MAX_ZOOM}
+                  title="拡大"
+                  style={{
+                    width: 36,
+                    height: 32,
+                    padding: 0,
+                    margin: 0,
+                    border: 'none',
+                    borderBottom: '1px solid #e5e7eb',
+                    background: '#fff',
+                    fontSize: '1.25rem',
+                    fontWeight: 'bold',
+                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: zoom >= MAX_ZOOM ? 'not-allowed' : 'pointer',
+                    color: zoom >= MAX_ZOOM ? '#9ca3af' : '#374151',
+                    boxSizing: 'border-box',
+                    caretColor: 'transparent',
+                  }}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={zoomOut}
+                  disabled={zoom <= MIN_ZOOM}
+                  title="縮小"
+                  style={{
+                    width: 36,
+                    height: 32,
+                    padding: 0,
+                    margin: 0,
+                    border: 'none',
+                    background: '#fff',
+                    fontSize: '1.25rem',
+                    fontWeight: 'bold',
+                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: zoom <= MIN_ZOOM ? 'not-allowed' : 'pointer',
+                    color: zoom <= MIN_ZOOM ? '#9ca3af' : '#374151',
+                    boxSizing: 'border-box',
+                    caretColor: 'transparent',
+                  }}
+                >
+                  -
+                </button>
+              </div>
+              <svg
+                ref={svgRef}
+                className="mainSvg"
+                viewBox={`${panClamped.x} ${panClamped.y} ${viewW} ${viewH}`}
+                preserveAspectRatio="xMidYMid meet"
+                style={{
+                  width: '100%',
+                  maxHeight: '85vh',
+                  background: '#fafafa',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  userSelect: 'none',
+                }}
+                aria-label="08小図35-36のテキスト・オブジェクト表示"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              >
               <title>08小図35-36 JSONデータのテキスト表示</title>
               <image
                 href={kyushuImage}
@@ -145,6 +278,7 @@ export function MapPage() {
                             fontSize={obj.fontSize}
                             fontFamily="sans-serif"
                             fill="#111"
+                            style={{ pointerEvents: 'none' }}
                           >
                             {obj.content}
                           </text>
@@ -155,7 +289,8 @@ export function MapPage() {
                   </g>
                 ) : null
               )}
-            </svg>
+              </svg>
+            </>
           )}
         </div>
       </div>
