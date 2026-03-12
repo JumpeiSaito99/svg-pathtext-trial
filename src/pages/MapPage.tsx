@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import kyushuImage from '../assets/レリーフ4c_九州地方.png';
+import kyushuImage from '../assets/bg1.png';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 8;
@@ -24,6 +24,8 @@ interface MapDocument {
   document: string;
   width: number;
   height: number;
+  bgoffsetx: number;
+  bgoffsety: number;
   layers: MapLayer[];
 }
 
@@ -255,41 +257,41 @@ export function MapPage() {
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
               >
-              <title>08小図35-36 JSONデータのテキスト表示</title>
-              <image
-                href={kyushuImage}
-                x="0"
-                y="0"
-                width={width}
-                height={height}
-                preserveAspectRatio="xMidYMid meet"
-              />
-              {layers.map((layer, layerIndex) =>
-                layerVisibility[layer.name] !== false ? (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: layer.name が重複するデータのため
-                  <g key={`layer-${layerIndex}`} data-layer={layer.name}>
-                    {layer.objects.map((obj, i) => {
-                      if (obj.type === 'text') {
-                        return (
-                          <text
-                            // biome-ignore lint/suspicious/noArrayIndexKey: 同一レイヤー内で一意のため
-                            key={`layer-${layerIndex}-obj-${i}`}
-                            x={obj.x}
-                            y={obj.y}
-                            fontSize={obj.fontSize}
-                            fontFamily="sans-serif"
-                            fill={obj.fillColor}
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            {obj.content}
-                          </text>
-                        );
-                      }
-                      return null;
-                    })}
-                  </g>
-                ) : null
-              )}
+                <title>08小図35-36 JSONデータのテキスト表示</title>
+                <image
+                  href={kyushuImage}
+                  x={0}
+                  y={0}
+                  width={width}
+                  height={height}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+                {layers.map((layer, layerIndex) =>
+                  layerVisibility[layer.name] !== false ? (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: layer.name が重複するデータのため
+                    <g key={`layer-${layerIndex}`} data-layer={layer.name}>
+                      {layer.objects.map((obj, i) => {
+                        if (obj.type === 'text') {
+                          return (
+                            <text
+                              // biome-ignore lint/suspicious/noArrayIndexKey: 同一レイヤー内で一意のため
+                              key={`layer-${layerIndex}-obj-${i}`}
+                              x={obj.x}
+                              y={obj.y}
+                              fontSize={obj.fontSize}
+                              fontFamily="sans-serif"
+                              fill={obj.fillColor}
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              {obj.content}
+                            </text>
+                          );
+                        }
+                        return null;
+                      })}
+                    </g>
+                  ) : null
+                )}
               </svg>
             </>
           )}

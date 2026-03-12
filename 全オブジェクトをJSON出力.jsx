@@ -1,17 +1,10 @@
 (function () {
 	if (app.documents.length === 0) return;
 	var doc = app.activeDocument;
-	var artboard = doc.artboards[doc.artboards.getActiveArtboardIndex()];
-	var rect = artboard.artboardRect;
-	var h = rect[1] - rect[3];
-	var w = rect[2] - rect[0];
-
-	var result = {
-		document: doc.name,
-		width: w,
-		height: h,
-		layers: [],
-	};
+  var targetLayer = "製図線断ち線文字危険線";
+  var targetName = "Medi座標抽出用";
+  var bgTargetLayer = "7101.レリーフ";
+  var bgTargetName = "レリーフ4c九州地方.psd";
 
 	// 文字色（Color）を #RRGGBB 形式に変換
 	function getFillColorHex(color) {
@@ -50,27 +43,30 @@
 		}
 	}
 
-	// 斜体かどうかを characterAttributes から判定
-	function getItalic(ca) {
-		try {
-			if (!ca) return false;
-			if (ca.italics === true) return true;
-			if (ca.textFont) {
-				var name = (ca.textFont.name || "").toLowerCase();
-				var psName = (ca.textFont.postscriptName || "").toLowerCase();
-				if (name.indexOf("italic") >= 0 || name.indexOf("oblique") >= 0) return true;
-				if (psName.indexOf("italic") >= 0 || psName.indexOf("oblique") >= 0) return true;
-			}
-			return false;
-		} catch (e) {
-			return false;
-		}
-	}
-
 	// 画面更新を止めてフリーズとエラーを防止
 	app.screenUpdating = false;
 
 	try {
+    var target = doc.layers[targetLayer];
+    var origin = target.pageItems.getByName(targetName);
+    var bounds = origin.visibleBounds;
+    var originx = bounds[0];
+    var originy = bounds[1];
+
+    var bgTarget = doc.layers[bgTargetLayer].pageItems.getByName(bgTargetName);
+    var bgBounds = bgTarget.visibleBounds;
+    var bgOriginx = bgBounds[0];
+    var bgOriginy = bgBounds[1];
+  
+    var result = {
+      document: doc.name,
+      width: bounds[2] - originx,
+      height: originy - bounds[3],
+      bgoffsetx: bgOriginx - originx,
+      bgoffsety: originy - bgOriginy,
+      layers: [],
+    };
+
 		for (var i = 0; i < doc.layers.length; i++) {
 			var layer = doc.layers[i];
 			// ロックされていたり非表示のレイヤーも、データ抽出だけなら読み取れますが
@@ -85,45 +81,20 @@
 				try {
 					var ca = tf.textRange.characterAttributes;
 					var fillHex = getFillColorHex(ca.fillColor);
-					var isItalic = getItalic(ca);
 					layerData.objects.push({
 						type: "text",
 						content: tf.contents,
-						x: tf.position[0] - rect[0],
-						y: rect[1] - tf.position[1],
+						x: tf.position[0] - originx,
+						y: originy - tf.position[1],
 						fontSize: ca.size,
 						fillColor: fillHex,
-						italic: isItalic,
 					});
 				} catch (e) {}
 			}
 
-			// 2. 画像（PSDリンク）
-			for (var p = 0; p < layer.placedItems.length; p++) {
-				var pi = layer.placedItems[p];
-				try {
-					layerData.objects.push({
-						type: "image",
-						file: pi.file ? pi.file.name : "embedded_or_missing",
-						x: pi.position[0],
-						y: h - pi.position[1],
-					});
-				} catch (e) {}
-			}
-
-			// 3. パス（※エラーが出やすいのでtry-catchで保護）
-			// for (var s = 0; s < layer.pathItems.length; s++) {
-			//     var path = layer.pathItems[s];
-			//     try {
-			//         layerData.objects.push({
-			//             type: "path",
-			//             x: path.position[0],
-			//             y: h - path.position[1]
-			//         });
-			//     } catch(e) {}
-			// }
-
-			result.layers.push(layerData);
+      if (layerData.objects.length > 0) {
+        result.layers.push(layerData);
+      }
 		}
 
 		// JSON書き出し実行
