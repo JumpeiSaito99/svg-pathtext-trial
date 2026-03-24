@@ -1,18 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import kyushuImage from '../assets/bg1.png';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 8;
 const ZOOM_STEP = 1.15;
+const WHEEL_ZOOM_STEP = 1.08;
+const WHEEL_SETTLE_MS = 140;
 
-// JSON 08小図35-36_改行空白除去版.json の型
 interface MapTextObject {
   fillColor: string | undefined;
   type: 'text';
   content: string;
+  /** 日本語ラベル（あれば UI 言語 ja で優先） */
+  contentJa?: string;
+  /** 英語ラベル（あれば UI 言語 en で優先） */
+  contentEn?: string;
+  /** このオブジェクトが属する言語（指定時は一致する場合のみ描画） */
+  lang?: 'ja' | 'en';
   x: number;
   y: number;
   fontSize: number;
+  fontWeight?: string | number;
+  fontFamily?: string;
 }
 
 interface MapLayer {
@@ -24,21 +33,204 @@ interface MapDocument {
   document: string;
   width: number;
   height: number;
-  bgoffsetx: number;
-  bgoffsety: number;
+  bgoffsetx?: number;
+  bgoffsety?: number;
   layers: MapLayer[];
 }
 
 const MAP_JSON_URL = `${(import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')}/textdata.json`;
 
+type Camera = { panX: number; panY: number; zoom: number };
+
+function clampCamera(cam: Camera, mapW: number, mapH: number): Camera {
+  const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom));
+  const viewW = mapW / z;
+  const viewH = mapH / z;
+  const maxPanX = Math.max(0, mapW - viewW);
+  const maxPanY = Math.max(0, mapH - viewH);
+  return {
+    zoom: z,
+    panX: Math.max(0, Math.min(maxPanX, cam.panX)),
+    panY: Math.max(0, Math.min(maxPanY, cam.panY))
+  };
+}
+
+function getLabelForLang(obj: MapTextObject, uiLang: 'ja' | 'en'): string | null {
+  if (obj.contentJa != null || obj.contentEn != null) {
+    if (uiLang === 'ja') return obj.contentJa ?? obj.content;
+    return obj.contentEn ?? obj.content;
+  }
+  if (obj.lang != null && obj.lang !== uiLang) return null;
+  return obj.content;
+}
+
+function viewportNeedsLabel(
+  x: number,
+  y: number,
+  fontSize: number,
+  panX: number,
+  panY: number,
+  viewW: number,
+  viewH: number
+): boolean {
+  const pad = Math.max(8, fontSize * 1.5);
+  return (
+    x >= panX - pad &&
+    x <= panX + viewW + pad &&
+    y >= panY - pad &&
+    y <= panY + viewH + pad
+  );
+}
+
+/** 高解像度レイヤー用: 地図座標の表示矩形に対応する元画像サブ領域を描画 */
+function drawViewportBackgroundImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  mapW: number,
+  mapH: number,
+  panX: number,
+  panY: number,
+  viewW: number,
+  viewH: number
+) {
+  if (img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
+  const sx = (panX / mapW) * img.naturalWidth;
+  const sy = (panY / mapH) * img.naturalHeight;
+  const sw = (viewW / mapW) * img.naturalWidth;
+  const sh = (viewH / mapH) * img.naturalHeight;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, sx, sy, sw, sh, panX, panY, viewW, viewH);
+}
+
+/** 背景用: JSON 全レイヤー・全テキスト（ビューポートに関係なく一度だけ描画） */
+function drawAllMapText(ctx: CanvasRenderingContext2D, doc: MapDocument, uiLang: 'ja' | 'en') {
+  for (const layer of doc.layers) {
+    for (const obj of layer.objects) {
+      if (obj.type !== 'text') continue;
+      const label = getLabelForLang(obj, uiLang);
+      if (label == null || label === '') continue;
+      const family = obj.fontFamily ?? 'sans-serif';
+      const weight = obj.fontWeight ?? 'normal';
+      ctx.font = `${weight} ${obj.fontSize}px ${family}`;
+      ctx.fillStyle = obj.fillColor ?? '#000000';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(label, obj.x, obj.y);
+    }
+  }
+}
+
 export function MapPage() {
   const [mapDoc, setMapDoc] = useState<MapDocument | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [displayLang, setDisplayLang] = useState<'ja' | 'en'>('ja');
   const [isDragging, setIsDragging] = useState(false);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const [zoomUi, setZoomUi] = useState(1);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const layerWrapRef = useRef<HTMLDivElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const textMountRef = useRef<HTMLDivElement>(null);
+
+  const cameraRef = useRef<Camera>({ panX: 0, panY: 0, zoom: 1 });
+  const dragStartRef = useRef<{ px: number; py: number; panX: number; panY: number } | null>(null);
+  const transformRafRef = useRef<number | null>(null);
+  const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bgDrawnKeyRef = useRef<string>('');
+  const bgLoadGenRef = useRef(0);
+  /** 高解像度オーバーレイでビューポート背景を描くための元画像 */
+  const mapImageRef = useRef<HTMLImageElement | null>(null);
+
+  const applyTransform = useCallback(() => {
+    const container = containerRef.current;
+    const wrap = layerWrapRef.current;
+    const doc = mapDoc;
+    if (!container || !wrap || !doc) return;
+
+    const cam = clampCamera(cameraRef.current, doc.width, doc.height);
+    cameraRef.current = cam;
+
+    const rect = container.getBoundingClientRect();
+    const Wc = rect.width;
+    const Hc = rect.height;
+    if (Wc <= 0 || Hc <= 0) return;
+
+    const viewW = doc.width / cam.zoom;
+    const viewH = doc.height / cam.zoom;
+    const S = Math.min(Wc / viewW, Hc / viewH);
+    const ox = (Wc - viewW * S) / 2;
+    const oy = (Hc - viewH * S) / 2;
+
+    wrap.style.transform = `translate(${ox}px, ${oy}px) scale(${S}) translate(${-cam.panX}px, ${-cam.panY}px)`;
+  }, [mapDoc]);
+
+  const scheduleApplyTransform = useCallback(() => {
+    if (transformRafRef.current != null) return;
+    transformRafRef.current = requestAnimationFrame(() => {
+      transformRafRef.current = null;
+      applyTransform();
+    });
+  }, [applyTransform]);
+
+  const commitHighResText = useCallback(() => {
+    const mount = textMountRef.current;
+    const doc = mapDoc;
+    if (!mount || !doc) return;
+
+    const cam = clampCamera(cameraRef.current, doc.width, doc.height);
+    cameraRef.current = cam;
+
+    const baseDpr = Math.min(2.5, window.devicePixelRatio || 1);
+    /** 拡大時は表示領域のラベルをより高密度にラスタライズ */
+    const dpr = Math.min(4, baseDpr * Math.sqrt(Math.max(1, cam.zoom)));
+    const mapW = doc.width;
+    const mapH = doc.height;
+    const viewW = mapW / cam.zoom;
+    const viewH = mapH / cam.zoom;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(mapW * dpr);
+    canvas.height = Math.round(mapH * dpr);
+    canvas.style.cssText = `display:block;width:${mapW}px;height:${mapH}px;pointer-events:none`;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, mapW, mapH);
+
+    const bgImg = mapImageRef.current;
+    if (bgImg?.complete && bgImg.naturalWidth > 0) {
+      drawViewportBackgroundImage(ctx, bgImg, mapW, mapH, cam.panX, cam.panY, viewW, viewH);
+    }
+
+    for (const layer of doc.layers) {
+      if (layerVisibility[layer.name] === false) continue;
+      for (const obj of layer.objects) {
+        if (obj.type !== 'text') continue;
+        const label = getLabelForLang(obj, displayLang);
+        if (label == null || label === '') continue;
+        if (!viewportNeedsLabel(obj.x, obj.y, obj.fontSize, cam.panX, cam.panY, viewW, viewH)) continue;
+
+        const family = obj.fontFamily ?? 'sans-serif';
+        const weight = obj.fontWeight ?? 'normal';
+        ctx.font = `${weight} ${obj.fontSize}px ${family}`;
+        ctx.fillStyle = obj.fillColor ?? '#000000';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(label, obj.x, obj.y);
+      }
+    }
+
+    mount.replaceChildren(canvas);
+  }, [mapDoc, layerVisibility, displayLang]);
+
+  const scheduleWheelCommit = useCallback(() => {
+    if (wheelTimerRef.current != null) clearTimeout(wheelTimerRef.current);
+    wheelTimerRef.current = setTimeout(() => {
+      wheelTimerRef.current = null;
+      commitHighResText();
+      setZoomUi(cameraRef.current.zoom);
+    }, WHEEL_SETTLE_MS);
+  }, [commitHighResText]);
 
   useEffect(() => {
     fetch(MAP_JSON_URL)
@@ -60,62 +252,184 @@ export function MapPage() {
       });
   }, []);
 
+  /**
+   * 固定背景レイヤー: 画像 + JSON 全テキストを一度描画（パン・ズームでは再描画しない）。
+   * 表示言語が変わったときだけ画像＋全文を描き直す。
+   */
+  useEffect(() => {
+    if (!mapDoc) return;
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    const key = `${mapDoc.width}|${mapDoc.height}|${kyushuImage}|${displayLang}`;
+    if (bgDrawnKeyRef.current === key) return;
+
+    bgLoadGenRef.current += 1;
+    const gen = bgLoadGenRef.current;
+
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (gen !== bgLoadGenRef.current) return;
+      const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+      const w = mapDoc.width;
+      const h = mapDoc.height;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      drawAllMapText(ctx, mapDoc, displayLang);
+      mapImageRef.current = img;
+      bgDrawnKeyRef.current = key;
+      applyTransform();
+      commitHighResText();
+    };
+    img.src = kyushuImage;
+  }, [mapDoc, displayLang, applyTransform, commitHighResText]);
+
+  /** レイヤー可視の変更時は高解像度オーバーレイのみ更新（背景の全文はそのまま） */
+  useEffect(() => {
+    if (!mapDoc || bgDrawnKeyRef.current === '') return;
+    commitHighResText();
+  }, [mapDoc, layerVisibility, commitHighResText]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !mapDoc) return;
+
+    const ro = new ResizeObserver(() => {
+      applyTransform();
+      commitHighResText();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapDoc, applyTransform, commitHighResText]);
+
   const toggleLayer = (name: string) => {
     setLayerVisibility((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
-  const zoomIn = () => setZoom((z) => Math.min(MAX_ZOOM, z * ZOOM_STEP));
-  const zoomOut = () => setZoom((z) => Math.max(MIN_ZOOM, z / ZOOM_STEP));
-
-  const loaded = mapDoc !== null;
-  const { width, height, layers } = mapDoc ?? {
-    width: 1000,
-    height: 1000,
-    layers: [] as MapLayer[]
+  const zoomByFactor = (factor: number) => {
+    if (!mapDoc) return;
+    const cam = clampCamera(cameraRef.current, mapDoc.width, mapDoc.height);
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * factor));
+    cameraRef.current = clampCamera({ ...cam, zoom: nextZoom }, mapDoc.width, mapDoc.height);
+    setZoomUi(cameraRef.current.zoom);
+    applyTransform();
+    commitHighResText();
   };
-  const viewW = width / zoom;
-  const viewH = height / zoom;
-  const maxPanX = Math.max(0, width - viewW);
-  const maxPanY = Math.max(0, height - viewH);
+
+  const zoomIn = () => zoomByFactor(ZOOM_STEP);
+  const zoomOut = () => zoomByFactor(1 / ZOOM_STEP);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !mapDoc) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    const cam = clampCamera(cameraRef.current, mapDoc.width, mapDoc.height);
+    cameraRef.current = cam;
     dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      panX: pan.x,
-      panY: pan.y
+      px: e.clientX,
+      py: e.clientY,
+      panX: cam.panX,
+      panY: cam.panY
     };
     setIsDragging(true);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     const start = dragStartRef.current;
-    if (!start) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const scaleX = viewW / rect.width;
-    const scaleY = viewH / rect.height;
-    let dx = (start.x - e.clientX) * scaleX;
-    let dy = (start.y - e.clientY) * scaleY;
-    const newX = Math.max(0, Math.min(maxPanX, start.panX + dx));
-    const newY = Math.max(0, Math.min(maxPanY, start.panY + dy));
-    setPan({ x: newX, y: newY });
+    const doc = mapDoc;
+    const container = containerRef.current;
+    if (!start || !doc || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const Wc = rect.width;
+    const Hc = rect.height;
+    if (Wc <= 0 || Hc <= 0) return;
+
+    const cam = clampCamera(cameraRef.current, doc.width, doc.height);
+    const viewW = doc.width / cam.zoom;
+    const viewH = doc.height / cam.zoom;
+    const S = Math.min(Wc / viewW, Hc / viewH);
+
+    let dx = (start.px - e.clientX) / S;
+    let dy = (start.py - e.clientY) / S;
+    cameraRef.current = clampCamera(
+      { ...cam, panX: start.panX + dx, panY: start.panY + dy },
+      doc.width,
+      doc.height
+    );
+    scheduleApplyTransform();
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
     dragStartRef.current = null;
     setIsDragging(false);
+    commitHighResText();
   };
 
-  const panClamped = {
-    x: Math.max(0, Math.min(pan.x, maxPanX)),
-    y: Math.max(0, Math.min(pan.y, maxPanY))
-  };
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !mapDoc) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const Wc = rect.width;
+      const Hc = rect.height;
+      if (Wc <= 0 || Hc <= 0) return;
+
+      let cam = clampCamera(cameraRef.current, mapDoc.width, mapDoc.height);
+      const viewW = mapDoc.width / cam.zoom;
+      const viewH = mapDoc.height / cam.zoom;
+      const S = Math.min(Wc / viewW, Hc / viewH);
+      const ox = (Wc - viewW * S) / 2;
+      const oy = (Hc - viewH * S) / 2;
+
+      const mx = (e.clientX - rect.left - ox) / S + cam.panX;
+      const my = (e.clientY - rect.top - oy) / S + cam.panY;
+
+      const direction = e.deltaY > 0 ? -1 : 1;
+      const factor = direction > 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
+      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * factor));
+      const newViewW = mapDoc.width / newZoom;
+      const newViewH = mapDoc.height / newZoom;
+      const newS = Math.min(Wc / newViewW, Hc / newViewH);
+      const newOx = (Wc - newViewW * newS) / 2;
+      const newOy = (Hc - newViewH * newS) / 2;
+
+      const newPanX = mx - (e.clientX - rect.left - newOx) / newS;
+      const newPanY = my - (e.clientY - rect.top - newOy) / newS;
+
+      cam = clampCamera({ panX: newPanX, panY: newPanY, zoom: newZoom }, mapDoc.width, mapDoc.height);
+      cameraRef.current = cam;
+      scheduleApplyTransform();
+      scheduleWheelCommit();
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [mapDoc, scheduleApplyTransform, scheduleWheelCommit]);
+
+  useEffect(() => {
+    return () => {
+      if (wheelTimerRef.current != null) clearTimeout(wheelTimerRef.current);
+    };
+  }, []);
+
+  const loaded = mapDoc !== null;
+  const layers = mapDoc?.layers ?? [];
 
   return (
     <div className="app">
@@ -134,7 +448,21 @@ export function MapPage() {
               </span>
             )}
           </div>
-          <div className="headerRight">
+          <div className="headerRight" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {loaded && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+                <span style={{ color: '#666' }}>表示言語</span>
+                <select
+                  value={displayLang}
+                  onChange={(ev) => setDisplayLang(ev.target.value as 'ja' | 'en')}
+                  style={{ fontSize: '0.85rem', padding: '2px 6px' }}
+                  aria-label="ラベル言語"
+                >
+                  <option value="ja">日本語 (ja)</option>
+                  <option value="en">英語 (en)</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -186,7 +514,7 @@ export function MapPage() {
                 <button
                   type="button"
                   onClick={zoomIn}
-                  disabled={zoom >= MAX_ZOOM}
+                  disabled={zoomUi >= MAX_ZOOM}
                   title="拡大"
                   style={{
                     width: 36,
@@ -202,8 +530,8 @@ export function MapPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: zoom >= MAX_ZOOM ? 'not-allowed' : 'pointer',
-                    color: zoom >= MAX_ZOOM ? '#9ca3af' : '#374151',
+                    cursor: zoomUi >= MAX_ZOOM ? 'not-allowed' : 'pointer',
+                    color: zoomUi >= MAX_ZOOM ? '#9ca3af' : '#374151',
                     boxSizing: 'border-box',
                     caretColor: 'transparent',
                   }}
@@ -213,7 +541,7 @@ export function MapPage() {
                 <button
                   type="button"
                   onClick={zoomOut}
-                  disabled={zoom <= MIN_ZOOM}
+                  disabled={zoomUi <= MIN_ZOOM}
                   title="縮小"
                   style={{
                     width: 36,
@@ -228,8 +556,8 @@ export function MapPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: zoom <= MIN_ZOOM ? 'not-allowed' : 'pointer',
-                    color: zoom <= MIN_ZOOM ? '#9ca3af' : '#374151',
+                    cursor: zoomUi <= MIN_ZOOM ? 'not-allowed' : 'pointer',
+                    color: zoomUi <= MIN_ZOOM ? '#9ca3af' : '#374151',
                     boxSizing: 'border-box',
                     caretColor: 'transparent',
                   }}
@@ -237,62 +565,61 @@ export function MapPage() {
                   -
                 </button>
               </div>
-              <svg
-                ref={svgRef}
+
+              <div
+                ref={containerRef}
                 className="mainSvg"
-                viewBox={`${panClamped.x} ${panClamped.y} ${viewW} ${viewH}`}
-                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="08小図35-36のテキスト・オブジェクト表示（Canvas）"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={(e) => {
+                  if (dragStartRef.current == null) return;
+                  handlePointerUp(e);
+                }}
                 style={{
+                  position: 'relative',
                   width: '100%',
                   maxHeight: '85vh',
+                  aspectRatio: mapDoc ? `${mapDoc.width} / ${mapDoc.height}` : '1',
                   background: '#fafafa',
                   border: '1px solid #e5e7eb',
                   borderRadius: 8,
                   cursor: isDragging ? 'grabbing' : 'grab',
                   userSelect: 'none',
+                  touchAction: 'none',
+                  overflow: 'hidden',
                 }}
-                aria-label="08小図35-36のテキスト・オブジェクト表示"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
               >
-                <title>08小図35-36 JSONデータのテキスト表示</title>
-                <image
-                  href={kyushuImage}
-                  x={0}
-                  y={0}
-                  width={width}
-                  height={height}
-                  preserveAspectRatio="xMidYMid meet"
-                />
-                {layers.map((layer, layerIndex) =>
-                  layerVisibility[layer.name] !== false ? (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: layer.name が重複するデータのため
-                    <g key={`layer-${layerIndex}`} data-layer={layer.name}>
-                      {layer.objects.map((obj, i) => {
-                        if (obj.type === 'text') {
-                          return (
-                            <text
-                              // biome-ignore lint/suspicious/noArrayIndexKey: 同一レイヤー内で一意のため
-                              key={`layer-${layerIndex}-obj-${i}`}
-                              x={obj.x}
-                              y={obj.y}
-                              fontSize={obj.fontSize}
-                              fontFamily="sans-serif"
-                              fill={obj.fillColor}
-                              style={{ pointerEvents: 'none' }}
-                            >
-                              {obj.content}
-                            </text>
-                          );
-                        }
-                        return null;
-                      })}
-                    </g>
-                  ) : null
-                )}
-              </svg>
+                <div
+                  ref={layerWrapRef}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    transformOrigin: '0 0',
+                    willChange: 'transform',
+                  }}
+                >
+                  <canvas
+                    ref={bgCanvasRef}
+                    style={{ display: 'block', pointerEvents: 'none' }}
+                  />
+                  <div
+                    ref={textMountRef}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>
