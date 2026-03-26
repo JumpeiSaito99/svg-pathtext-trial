@@ -7,6 +7,15 @@ const ZOOM_STEP = 1.15;
 const WHEEL_ZOOM_STEP = 1.08;
 const WHEEL_SETTLE_MS = 140;
 
+/** 慣性パン: 速度サンプル数・減衰・しきい値（地図座標系 px/s 相当） */
+const PAN_HISTORY_MAX = 10;
+const PAN_INERTIA_VELOCITY_BOOST = 1.2;
+const PAN_INERTIA_MIN_SPEED = 90;
+const PAN_INERTIA_MAX_SPEED = 9000;
+const PAN_INERTIA_STOP_SPEED = 12;
+/** 1 秒あたりの減速率（指数）。大きいほど早く止まる */
+const PAN_INERTIA_DECAY_PER_SEC = 2.4;
+
 interface MapTextObject {
   fillColor: string | undefined;
   type: 'text';
@@ -141,6 +150,23 @@ export function MapPage() {
   /** 高解像度オーバーレイでビューポート背景を描くための元画像 */
   const mapImageRef = useRef<HTMLImageElement | null>(null);
 
+  const mapDocRef = useRef<MapDocument | null>(null);
+  mapDocRef.current = mapDoc;
+
+  const applyTransformRef = useRef((): void => {});
+  const commitHighResTextRef = useRef((): void => {});
+
+  const panMoveHistoryRef = useRef<Array<{ t: number; panX: number; panY: number }>>([]);
+  const inertiaRafRef = useRef<number | null>(null);
+  const inertiaLastTRef = useRef(0);
+
+  const stopInertiaPan = useCallback(() => {
+    if (inertiaRafRef.current != null) {
+      cancelAnimationFrame(inertiaRafRef.current);
+      inertiaRafRef.current = null;
+    }
+  }, []);
+
   const applyTransform = useCallback(() => {
     const container = containerRef.current;
     const wrap = layerWrapRef.current;
@@ -222,6 +248,82 @@ export function MapPage() {
 
     mount.replaceChildren(canvas);
   }, [mapDoc, layerVisibility, displayLang]);
+
+  applyTransformRef.current = applyTransform;
+  commitHighResTextRef.current = commitHighResText;
+
+  const startInertiaPan = useCallback(
+    (vx: number, vy: number) => {
+      const doc = mapDocRef.current;
+      if (!doc) {
+        commitHighResTextRef.current();
+        return;
+      }
+      stopInertiaPan();
+      let velX = vx * PAN_INERTIA_VELOCITY_BOOST;
+      let velY = vy * PAN_INERTIA_VELOCITY_BOOST;
+      const mag = Math.hypot(velX, velY);
+      if (mag > PAN_INERTIA_MAX_SPEED) {
+        const s = PAN_INERTIA_MAX_SPEED / mag;
+        velX *= s;
+        velY *= s;
+      }
+      if (mag < PAN_INERTIA_MIN_SPEED) {
+        commitHighResTextRef.current();
+        return;
+      }
+
+      inertiaLastTRef.current = performance.now();
+
+      const tick = (now: number) => {
+        const d = mapDocRef.current;
+        if (!d) {
+          inertiaRafRef.current = null;
+          return;
+        }
+
+        const dt = Math.min(48, now - inertiaLastTRef.current) / 1000;
+        inertiaLastTRef.current = now;
+        if (dt <= 0) {
+          inertiaRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        const cam = cameraRef.current;
+        const unclampedPanX = cam.panX + velX * dt;
+        const unclampedPanY = cam.panY + velY * dt;
+        const next = clampCamera(
+          { ...cam, panX: unclampedPanX, panY: unclampedPanY },
+          d.width,
+          d.height
+        );
+        if (next.panX !== unclampedPanX) velX = 0;
+        if (next.panY !== unclampedPanY) velY = 0;
+        cameraRef.current = next;
+        applyTransformRef.current();
+
+        const decay = Math.exp(-PAN_INERTIA_DECAY_PER_SEC * dt);
+        velX *= decay;
+        velY *= decay;
+
+        const speed = Math.hypot(velX, velY);
+        if (speed < PAN_INERTIA_STOP_SPEED) {
+          inertiaRafRef.current = null;
+          commitHighResTextRef.current();
+          return;
+        }
+
+        inertiaRafRef.current = requestAnimationFrame(tick);
+      };
+
+      inertiaRafRef.current = requestAnimationFrame(tick);
+    },
+    [stopInertiaPan]
+  );
+
+  useEffect(() => {
+    return () => stopInertiaPan();
+  }, [stopInertiaPan]);
 
   const scheduleWheelCommit = useCallback(() => {
     if (wheelTimerRef.current != null) clearTimeout(wheelTimerRef.current);
@@ -316,6 +418,7 @@ export function MapPage() {
 
   const zoomByFactor = (factor: number) => {
     if (!mapDoc) return;
+    stopInertiaPan();
     const cam = clampCamera(cameraRef.current, mapDoc.width, mapDoc.height);
     const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * factor));
     cameraRef.current = clampCamera({ ...cam, zoom: nextZoom }, mapDoc.width, mapDoc.height);
@@ -329,6 +432,8 @@ export function MapPage() {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || !mapDoc) return;
+    stopInertiaPan();
+    panMoveHistoryRef.current = [];
     e.currentTarget.setPointerCapture(e.pointerId);
     const cam = clampCamera(cameraRef.current, mapDoc.width, mapDoc.height);
     cameraRef.current = cam;
@@ -338,6 +443,8 @@ export function MapPage() {
       panX: cam.panX,
       panY: cam.panY
     };
+    const t = performance.now();
+    panMoveHistoryRef.current.push({ t, panX: cam.panX, panY: cam.panY });
     setIsDragging(true);
   };
 
@@ -364,6 +471,10 @@ export function MapPage() {
       doc.width,
       doc.height
     );
+    const hist = panMoveHistoryRef.current;
+    const now = performance.now();
+    hist.push({ t: now, panX: cameraRef.current.panX, panY: cameraRef.current.panY });
+    if (hist.length > PAN_HISTORY_MAX) hist.shift();
     scheduleApplyTransform();
   };
 
@@ -376,6 +487,21 @@ export function MapPage() {
     }
     dragStartRef.current = null;
     setIsDragging(false);
+
+    const doc = mapDocRef.current;
+    const hist = panMoveHistoryRef.current;
+    panMoveHistoryRef.current = [];
+    if (doc && hist.length >= 2) {
+      const oldest = hist[0];
+      const newest = hist[hist.length - 1];
+      const dtSec = (newest.t - oldest.t) / 1000;
+      if (dtSec >= 1 / 200) {
+        const vx = (newest.panX - oldest.panX) / dtSec;
+        const vy = (newest.panY - oldest.panY) / dtSec;
+        startInertiaPan(vx, vy);
+        return;
+      }
+    }
     commitHighResText();
   };
 
@@ -385,6 +511,11 @@ export function MapPage() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      if (inertiaRafRef.current != null) {
+        cancelAnimationFrame(inertiaRafRef.current);
+        inertiaRafRef.current = null;
+        commitHighResTextRef.current();
+      }
       const rect = el.getBoundingClientRect();
       const Wc = rect.width;
       const Hc = rect.height;
