@@ -16,6 +16,10 @@ const PAN_INERTIA_STOP_SPEED = 12;
 /** 1 秒あたりの減速率（指数）。大きいほど早く止まる */
 const PAN_INERTIA_DECAY_PER_SEC = 2.4;
 
+/** 虫眼鏡レンズ半径（コンテナ CSS px）・UI アクセント */
+const MAGNIFIER_LENS_RADIUS_PX = 64;
+const MAGNIFIER_UI_ACCENT = '#16a34a';
+
 interface MapTextObject {
   fillColor: string | undefined;
   type: 'text';
@@ -48,6 +52,7 @@ interface MapDocument {
 }
 
 const MAP_JSON_URL = `${(import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')}/textdata.json`;
+const MAP_JSON_EN_URL = `${(import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')}/textdata_en.json`;
 
 type Camera = { panX: number; panY: number; zoom: number };
 
@@ -62,6 +67,17 @@ function clampCamera(cam: Camera, mapW: number, mapH: number): Camera {
     panX: Math.max(0, Math.min(maxPanX, cam.panX)),
     panY: Math.max(0, Math.min(maxPanY, cam.panY))
   };
+}
+
+/** コンテナと地図ドキュメントから、meet 表示の S / オフセット / ビュー矩形を求める */
+function computeViewportLayout(Wc: number, Hc: number, doc: MapDocument, cam: Camera) {
+  const c = clampCamera(cam, doc.width, doc.height);
+  const viewW = doc.width / c.zoom;
+  const viewH = doc.height / c.zoom;
+  const S = Math.min(Wc / viewW, Hc / viewH);
+  const ox = (Wc - viewW * S) / 2;
+  const oy = (Hc - viewH * S) / 2;
+  return { cam: c, S, ox, oy, viewW, viewH };
 }
 
 function getLabelForLang(obj: MapTextObject, uiLang: 'ja' | 'en'): string | null {
@@ -131,6 +147,7 @@ function drawAllMapText(ctx: CanvasRenderingContext2D, doc: MapDocument, uiLang:
 
 export function MapPage() {
   const [mapDoc, setMapDoc] = useState<MapDocument | null>(null);
+  const [mapDocEn, setMapDocEn] = useState<MapDocument | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [displayLang, setDisplayLang] = useState<'ja' | 'en'>('ja');
   const [isDragging, setIsDragging] = useState(false);
@@ -140,6 +157,8 @@ export function MapPage() {
   const layerWrapRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const textMountRef = useRef<HTMLDivElement>(null);
+  const enTextMountRef = useRef<HTMLDivElement>(null);
+  const enMagnifierClipWrapRef = useRef<HTMLDivElement>(null);
 
   const cameraRef = useRef<Camera>({ panX: 0, panY: 0, zoom: 1 });
   const dragStartRef = useRef<{ px: number; py: number; panX: number; panY: number } | null>(null);
@@ -167,27 +186,60 @@ export function MapPage() {
     }
   }, []);
 
+  const [magnifierOn, setMagnifierOn] = useState(false);
+  const [lensCenter, setLensCenter] = useState({ x: 160, y: 160 });
+  const magnifierOnRef = useRef(false);
+  magnifierOnRef.current = magnifierOn;
+  const lensCenterRef = useRef(lensCenter);
+  lensCenterRef.current = lensCenter;
+  const layerVisibilityRef = useRef(layerVisibility);
+  layerVisibilityRef.current = layerVisibility;
+  const syncEnMagnifierClipRef = useRef<(() => void) | null>(null);
+  const lensDragRef = useRef<{ grabDx: number; grabDy: number } | null>(null);
+
+  const syncEnMagnifierClip = useCallback(() => {
+    const wrap = enMagnifierClipWrapRef.current;
+    const container = containerRef.current;
+    const doc = mapDocRef.current;
+    if (!wrap || !container || !doc) return;
+    if (!magnifierOnRef.current) {
+      wrap.style.visibility = 'hidden';
+      wrap.style.clipPath = 'none';
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    const Wc = rect.width;
+    const Hc = rect.height;
+    if (Wc <= 0 || Hc <= 0) return;
+    const lc = lensCenterRef.current;
+    const R = MAGNIFIER_LENS_RADIUS_PX;
+    const lay = computeViewportLayout(Wc, Hc, doc, cameraRef.current);
+    const { cam, S, ox, oy } = lay;
+    const mx = cam.panX + (lc.x - ox) / S;
+    const my = cam.panY + (lc.y - oy) / S;
+    const rMap = R / S;
+    wrap.style.visibility = 'visible';
+    wrap.style.clipPath = `circle(${rMap}px at ${mx}px ${my}px)`;
+  }, []);
+
+  syncEnMagnifierClipRef.current = syncEnMagnifierClip;
+
   const applyTransform = useCallback(() => {
     const container = containerRef.current;
     const wrap = layerWrapRef.current;
     const doc = mapDoc;
     if (!container || !wrap || !doc) return;
 
-    const cam = clampCamera(cameraRef.current, doc.width, doc.height);
-    cameraRef.current = cam;
-
     const rect = container.getBoundingClientRect();
     const Wc = rect.width;
     const Hc = rect.height;
     if (Wc <= 0 || Hc <= 0) return;
 
-    const viewW = doc.width / cam.zoom;
-    const viewH = doc.height / cam.zoom;
-    const S = Math.min(Wc / viewW, Hc / viewH);
-    const ox = (Wc - viewW * S) / 2;
-    const oy = (Hc - viewH * S) / 2;
+    const lay = computeViewportLayout(Wc, Hc, doc, cameraRef.current);
+    cameraRef.current = lay.cam;
 
-    wrap.style.transform = `translate(${ox}px, ${oy}px) scale(${S}) translate(${-cam.panX}px, ${-cam.panY}px)`;
+    wrap.style.transform = `translate(${lay.ox}px, ${lay.oy}px) scale(${lay.S}) translate(${-lay.cam.panX}px, ${-lay.cam.panY}px)`;
+    syncEnMagnifierClipRef.current?.();
   }, [mapDoc]);
 
   const scheduleApplyTransform = useCallback(() => {
@@ -197,6 +249,66 @@ export function MapPage() {
       applyTransform();
     });
   }, [applyTransform]);
+
+  /** textdata_en.json 用。日本語地図座標系に合わせてスケールし、表示ロジックはメイン高解像度と同様 */
+  const commitHighResEnOverlay = useCallback(() => {
+    const mount = enTextMountRef.current;
+    const docJa = mapDoc;
+    const docEn = mapDocEn;
+    if (!mount || !docJa || !docEn) return;
+
+    const cam = clampCamera(cameraRef.current, docJa.width, docJa.height);
+    cameraRef.current = cam;
+
+    const baseDpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const dpr = Math.min(4, baseDpr * Math.sqrt(Math.max(1, cam.zoom)));
+    const mapW = docJa.width;
+    const mapH = docJa.height;
+    const viewW = mapW / cam.zoom;
+    const viewH = mapH / cam.zoom;
+
+    const scaleX = mapW / docEn.width;
+    const scaleY = mapH / docEn.height;
+    const fsScale = Math.min(scaleX, scaleY);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(mapW * dpr);
+    canvas.height = Math.round(mapH * dpr);
+    canvas.style.cssText = `display:block;width:${mapW}px;height:${mapH}px;pointer-events:none`;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, mapW, mapH);
+
+    const bgImg = mapImageRef.current;
+    if (bgImg?.complete && bgImg.naturalWidth > 0) {
+      drawViewportBackgroundImage(ctx, bgImg, mapW, mapH, cam.panX, cam.panY, viewW, viewH);
+    }
+
+    for (const layer of docEn.layers) {
+      if (layerVisibility[layer.name] === false) continue;
+      for (const obj of layer.objects) {
+        if (obj.type !== 'text') continue;
+        const label = getLabelForLang(obj, 'en');
+        if (label == null || label === '') continue;
+        const mx = obj.x * scaleX;
+        const my = obj.y * scaleY;
+        const fs = obj.fontSize * fsScale;
+        if (!viewportNeedsLabel(mx, my, fs, cam.panX, cam.panY, viewW, viewH)) continue;
+
+        const family = obj.fontFamily ?? 'sans-serif';
+        const weight = obj.fontWeight ?? 'normal';
+        ctx.font = `${weight} ${fs}px ${family}`;
+        ctx.fillStyle = obj.fillColor ?? '#000000';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(label, mx, my);
+      }
+    }
+
+    mount.replaceChildren(canvas);
+    syncEnMagnifierClipRef.current?.();
+  }, [mapDoc, mapDocEn, layerVisibility]);
 
   const commitHighResText = useCallback(() => {
     const mount = textMountRef.current;
@@ -247,7 +359,8 @@ export function MapPage() {
     }
 
     mount.replaceChildren(canvas);
-  }, [mapDoc, layerVisibility, displayLang]);
+    commitHighResEnOverlay();
+  }, [mapDoc, layerVisibility, displayLang, commitHighResEnOverlay]);
 
   applyTransformRef.current = applyTransform;
   commitHighResTextRef.current = commitHighResText;
@@ -354,6 +467,19 @@ export function MapPage() {
       });
   }, []);
 
+  useEffect(() => {
+    fetch(MAP_JSON_EN_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error('textdata_en.json の読み込みに失敗しました');
+        return res.json();
+      })
+      .then((data: MapDocument) => setMapDocEn(data))
+      .catch((err) => {
+        console.error(err);
+        setMapDocEn(null);
+      });
+  }, []);
+
   /**
    * 固定背景レイヤー: 画像 + JSON 全テキストを一度描画（パン・ズームでは再描画しない）。
    * 表示言語が変わったときだけ画像＋全文を描き直す。
@@ -400,6 +526,12 @@ export function MapPage() {
     commitHighResText();
   }, [mapDoc, layerVisibility, commitHighResText]);
 
+  /** 英語 JSON が後から到着したとき虫眼鏡用レイヤーを構築 */
+  useEffect(() => {
+    if (!mapDoc || !mapDocEn || bgDrawnKeyRef.current === '') return;
+    commitHighResEnOverlay();
+  }, [mapDoc, mapDocEn, commitHighResEnOverlay]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !mapDoc) return;
@@ -429,6 +561,83 @@ export function MapPage() {
 
   const zoomIn = () => zoomByFactor(ZOOM_STEP);
   const zoomOut = () => zoomByFactor(1 / ZOOM_STEP);
+
+  useEffect(() => {
+    if (!magnifierOn) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const pad = MAGNIFIER_LENS_RADIUS_PX;
+    if (r.width <= 2 * pad || r.height <= 2 * pad) return;
+    setLensCenter({
+      x: Math.min(Math.max(pad, r.width / 2), r.width - pad),
+      y: Math.min(Math.max(pad, r.height / 2), r.height - pad)
+    });
+  }, [magnifierOn]);
+
+  useEffect(() => {
+    if (!magnifierOn) {
+      syncEnMagnifierClipRef.current?.();
+      return;
+    }
+    const id = requestAnimationFrame(() => syncEnMagnifierClipRef.current?.());
+    return () => cancelAnimationFrame(id);
+  }, [magnifierOn, lensCenter]);
+
+  useEffect(() => {
+    if (!magnifierOn || !mapDoc) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      const pad = MAGNIFIER_LENS_RADIUS_PX;
+      setLensCenter((prev) => ({
+        x: Math.min(Math.max(pad, prev.x), Math.max(pad, r.width - pad)),
+        y: Math.min(Math.max(pad, prev.y), Math.max(pad, r.height - pad))
+      }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [magnifierOn, mapDoc]);
+
+  const handleLensPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    lensDragRef.current = {
+      grabDx: cx - lensCenterRef.current.x,
+      grabDy: cy - lensCenterRef.current.y
+    };
+  };
+
+  const handleLensPointerMove = (e: React.PointerEvent) => {
+    if (lensDragRef.current == null) return;
+    e.stopPropagation();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const pad = MAGNIFIER_LENS_RADIUS_PX;
+    const nx = Math.min(Math.max(pad, cx - lensDragRef.current.grabDx), rect.width - pad);
+    const ny = Math.min(Math.max(pad, cy - lensDragRef.current.grabDy), rect.height - pad);
+    setLensCenter({ x: nx, y: ny });
+  };
+
+  const handleLensPointerUp = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    lensDragRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    e.stopPropagation();
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || !mapDoc) return;
@@ -695,6 +904,32 @@ export function MapPage() {
                 >
                   -
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setMagnifierOn((v) => !v)}
+                  aria-pressed={magnifierOn}
+                  title={magnifierOn ? '虫眼鏡をオフ' : '虫眼鏡（ドラッグで移動）'}
+                  style={{
+                    width: 36,
+                    height: 32,
+                    padding: 0,
+                    margin: 0,
+                    border: 'none',
+                    borderTop: '1px solid #e5e7eb',
+                    background: magnifierOn ? '#dcfce7' : '#fff',
+                    fontSize: '1rem',
+                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: magnifierOn ? MAGNIFIER_UI_ACCENT : '#374151',
+                    boxSizing: 'border-box',
+                    caretColor: 'transparent',
+                  }}
+                >
+                  🔍
+                </button>
               </div>
 
               <div
@@ -749,7 +984,59 @@ export function MapPage() {
                       pointerEvents: 'none',
                     }}
                   />
+                  <div
+                    ref={enMagnifierClipWrapRef}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                      visibility: 'hidden',
+                      clipPath: 'none',
+                    }}
+                  >
+                    <div
+                      ref={enTextMountRef}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
                 </div>
+                {magnifierOn && (
+                  <div
+                    data-magnifier-lens="1"
+                    onPointerDown={handleLensPointerDown}
+                    onPointerMove={handleLensPointerMove}
+                    onPointerUp={handleLensPointerUp}
+                    onPointerCancel={handleLensPointerUp}
+                    style={{
+                      position: 'absolute',
+                      left: lensCenter.x - MAGNIFIER_LENS_RADIUS_PX,
+                      top: lensCenter.y - MAGNIFIER_LENS_RADIUS_PX,
+                      width: MAGNIFIER_LENS_RADIUS_PX * 2,
+                      height: MAGNIFIER_LENS_RADIUS_PX * 2,
+                      borderRadius: '50%',
+                      border: `3px solid ${MAGNIFIER_UI_ACCENT}`,
+                      boxShadow:
+                        'inset 0 0 0 1px rgba(255,255,255,0.35), 0 2px 12px rgba(0,0,0,0.18)',
+                      background: 'rgba(22,163,74,0.06)',
+                      cursor: 'grab',
+                      touchAction: 'none',
+                      zIndex: 4,
+                      boxSizing: 'border-box',
+                    }}
+                    aria-label="虫眼鏡レンズ。ドラッグで位置を移動"
+                  />
+                )}
               </div>
             </>
           )}
